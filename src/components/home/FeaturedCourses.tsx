@@ -14,21 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IProduct } from "@/types"; // Use the consolidated type definition
 
-export default async function FeaturedCourses() {
-        const response = await fetch('/api/products'); 
-          // const response = await fetch('/api/products?featured=true'); 
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
-        
-        const products: IProduct[] = await response.json();
-     
-        
+export default function FeaturedCourses({ products }: { products: IProduct[] }) {
+  
   if (!products || products.length === 0) return null;
 
   return (
-    <section className="py-6 bg-white">
+    <section className="py-12 bg-white">
       <div className="container mx-auto px-4 md:px-8">
         
         {/* Header */}

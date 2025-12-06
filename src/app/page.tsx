@@ -3,14 +3,22 @@ import HeroSlider from "@/components/HeroSlider";
 import FeaturedCourses from "@/components/home/FeaturedCourses"
 import ProductList from "@/components/home/ProductList";
 
-export default  function Home() {
+export default async function Home() {
 
-    
+          const response = await fetch('https://proaccess-sepia.vercel.app/api/products'); 
+          // const response = await fetch('/api/products?featured=true'); 
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        
+        const data = await response.json();
+        
   return (
 <div>
   <HeroSlider />
 <FeaturesStrip />
-  <FeaturedCourses  />
+  <FeaturedCourses products={data.products} />
   <ProductList />
   <h2>test</h2>
 </div>
