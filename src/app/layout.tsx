@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import { ImageKitProvider } from "@imagekit/next";
 import Navbar from "@/components/Navbar";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,7 +38,7 @@ export default function RootLayout({
            <ImageKitProvider urlEndpoint={urlEndpoint}></ImageKitProvider>
            <Navbar />
         {children}
-
+<Toaster position="top-right" richColors />
         </Providers>
       </body>
     </html>
