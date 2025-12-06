@@ -5,7 +5,7 @@ import ProductList from "@/components/home/ProductList";
 
 export default async function Home() {
 
-          const response = await fetch('http://localhost:3000/api/products'); 
+          const response = await fetch('/api/products'); 
           // const response = await fetch('/api/products?featured=true'); 
         
         if (!response.ok) {
