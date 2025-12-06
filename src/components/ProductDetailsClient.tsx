@@ -53,7 +53,7 @@ export default function ProductDetailsClient({ product }: { product: IProduct })
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-20">
+    <div className="bg-slate-50 min-h-screen pb-12">
       
       {/* Breadcrumb */}
       <div className="bg-white border-b">

@@ -13,7 +13,7 @@ async function getProduct(slug: string): Promise<IProduct | null> {
 
     if (!res.ok) return null;
     const data = await res.json();
-    console.log(data)
+   
     return data.success ? data.product : null;
   } catch (error) {
     return null;
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getProduct(slug);
-console.log(product)
+
   if (!product) {
     return notFound();
   }
