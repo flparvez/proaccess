@@ -3,22 +3,14 @@ import HeroSlider from "@/components/HeroSlider";
 import FeaturedCourses from "@/components/home/FeaturedCourses"
 import ProductList from "@/components/home/ProductList";
 
-export default async function Home() {
+export default  function Home() {
 
-          const response = await fetch('/api/products'); 
-          // const response = await fetch('/api/products?featured=true'); 
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
-        
-        const data = await response.json();
-        
+    
   return (
 <div>
   <HeroSlider />
 <FeaturesStrip />
-  <FeaturedCourses products={data.products} />
+  <FeaturedCourses  />
   <ProductList />
   <h2>test</h2>
 </div>
