@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: SlugParams) {
 
     // 1. Fetch the Main Product
     // We filter by 'isAvailable: true' because hidden products shouldn't be public
-    const product = await Product.findOne({ slug, isAvailable: true })
+    const product = await Product.findOne({ slug })
       .populate("category", "name slug")
       .lean();
 

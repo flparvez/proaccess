@@ -31,6 +31,7 @@ export interface ICategory {
   updatedAt?: string;
 }
 
+export const SITE_URL = "https://proaccess-sepia.vercel.app";
 // ==========================================
 // 3. PRODUCT TYPE
 // ==========================================
