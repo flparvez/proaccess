@@ -9,24 +9,35 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }, // ✅ Typo fixed
+        // We label it "Email or Phone", but the key is still 'email' 
+        // because NextAuth's default sign-in form uses 'email' by convention.
+        // Your frontend sends { email: formData.identifier } so this receives the input.
+        email: { label: "Email or Phone", type: "text" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        // 1. Basic Validation
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Missing email or password");
+          throw new Error("Missing email/phone or password");
         }
 
         try {
           await connectToDatabase();
 
-          // ✅ CRITICAL FIX: Explicitly select password
-          const user = await User.findOne({ email: credentials.email }).select("+password");
+          // 2. 🟢 SEARCH LOGIC: Check both Email AND Phone fields
+          // 'credentials.email' holds the input string (e.g., "017..." or "john@...")
+          const user = await User.findOne({
+            $or: [
+              { email: credentials.email }, 
+              { phone: credentials.email }
+            ]
+          }).select("+password"); // Vital: Get password for comparison
 
           if (!user) {
-            throw new Error("No user found");
+            throw new Error("No user found with this email or phone");
           }
 
+          // 3. Verify Password
           const isValid = await bcrypt.compare(
             credentials.password,
             user.password
@@ -36,11 +47,12 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Invalid password");
           }
 
+          // 4. Return User Data (Stored in Session)
           return {
             id: user._id.toString(),
             email: user.email,
             name: user.name,
-            role: user.role || "user", // ✅ Default to user
+            role: user.role || "user",
             image: user.image
           };
         } catch (error) {

@@ -1,71 +1,86 @@
 import { connectToDatabase } from "@/lib/db";
 import { Order } from "@/models/Order";
+import { User } from "@/models/User";
 import { Product } from "@/models/Product";
-import {  authOptions }  from "@/lib/auth";
+import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-// ==========================
-// Helper: Safe Type Casting
-// ==========================
-const safeNumber = (value: any, defaultValue: number = 0): number => {
-  const num = Number(value);
-  return isNaN(num) ? defaultValue : num;
-};
-
-// ==========================
-// POST → User Creates a New Order (Checkout)
-// ==========================
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    // ✅ Fix: Use getServerSession with authOptions for v4
-       const session = await getServerSession(authOptions);
-       
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await req.json();
+    const { name, email, phone, transactionId, paymentMethod, cartItems } = body;
 
-    // 1. Basic Validation
-    if (!body.productId || !body.transactionId || !body.amount) {
-      return NextResponse.json(
-        { error: "Product ID, Transaction ID, and Amount are required" },
-        { status: 400 }
-      );
+    if (!cartItems || cartItems.length === 0) {
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
     await connectToDatabase();
 
-    // 2. Validate Product Existence
-    const product = await Product.findById(body.productId);
-    if (!product) {
-      return NextResponse.json({ error: "Product invalid" }, { status: 404 });
+    // ============================================================
+    // STEP 1: Handle User (Find or Create)
+    // ============================================================
+    let userId;
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // User exists, use their ID
+      userId = user._id;
+      // Optional: Update phone if missing
+      if (!user.phone && phone) {
+        user.phone = phone;
+        await user.save();
+      }
+    } else {
+      // 🟢 AUTO-REGISTER LOGIC
+      // Password = Email (Hashed)
+      const hashedPassword = await bcrypt.hash(email, 10);
+      
+      const newUser = await User.create({
+        name,
+        email,
+        phone, // Saving the number here
+        password: hashedPassword, 
+        role: "user"
+      });
+      
+      userId = newUser._id;
     }
 
-    // 3. Create Order
-    const newOrder = await Order.create({
-      user: session.user.id, // Link to logged-in user
-      product: body.productId,
-      transactionId: body.transactionId,
-      paymentMethod: body.paymentMethod || "Manual",
-      amount: safeNumber(body.amount),
-      screenshot: body.screenshot || "",
-      status: "pending",
-      deliveredContent: {} // Empty initially
+    // ============================================================
+    // STEP 2: Create Orders
+    // Your Model supports 1 Product per Order document.
+    // So we loop through cart items and create an Order for each.
+    // ============================================================
+    
+    const orderPromises = cartItems.map(async (item: any) => {
+      // Double check price from DB to prevent tampering
+      const dbProduct = await Product.findById(item.productId);
+      if (!dbProduct) return null;
+
+      return Order.create({
+        user: userId,
+        product: item.productId,
+        transactionId,
+        paymentMethod,
+        // Calculate total for this specific item (price * qty)
+        amount: dbProduct.salePrice * item.quantity, 
+        status: "pending",
+        deliveredContent: {} // Empty until Admin verifies
+      });
     });
 
-    return NextResponse.json(
-      { success: true, message: "Order placed successfully!", orderId: newOrder._id },
-      { status: 201 }
-    );
+    await Promise.all(orderPromises);
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "Order placed successfully! Please check your dashboard." 
+    });
 
   } catch (error: any) {
-    console.error("❌ Error creating order:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to place order" },
-      { status: 500 }
-    );
+    console.error("Checkout Error:", error);
+    return NextResponse.json({ error: error.message || "Checkout failed" }, { status: 500 });
   }
 }
 
@@ -76,9 +91,9 @@ export async function GET(req: NextRequest) {
   try {
      const session = await getServerSession(authOptions);
        
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // if (!session || !session.user) {
+    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // }
 
     await connectToDatabase();
 
@@ -86,9 +101,9 @@ export async function GET(req: NextRequest) {
     
     // 🟢 Security Logic: Admin vs User
     // If Admin: show all. If User: show only their own.
-    if (session.user.role !== "admin") {
-      query = { user: session.user.id };
-    }
+    // if (session.user.role !== "admin") {
+    //   query = { user: session.user.id };
+    // }
 
     const orders = await Order.find(query)
       .populate("product", "name price thumbnail slug") // Join with Product data
