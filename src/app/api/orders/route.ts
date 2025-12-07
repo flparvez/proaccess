@@ -4,110 +4,118 @@ import { User } from "@/models/User";
 import { Product } from "@/models/Product";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
+import { nanoid } from "nanoid"; // Install this: npm i nanoid
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, phone, transactionId, paymentMethod, cartItems } = body;
+    const { name, email, phone, paymentMethod, cartItems } = body;
 
+    // 1. Validation
     if (!cartItems || cartItems.length === 0) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
     await connectToDatabase();
 
-    // ============================================================
-    // STEP 1: Handle User (Find or Create)
-    // ============================================================
-    let userId;
-    let user = await User.findOne({ email });
+    // 2. Generate Unique Transaction ID for the System
+    // Format: ORD-{TIMESTAMP}-{RANDOM}
+    const systemTransactionId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    if (user) {
-      // User exists, use their ID
-      userId = user._id;
-      // Optional: Update phone if missing
-      if (!user.phone && phone) {
-        user.phone = phone;
-        await user.save();
+    // 3. User Logic (Find or Create)
+    let userId;
+    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+
+    if (existingUser) {
+      userId = existingUser._id;
+      if (!existingUser.phone && phone) {
+        existingUser.phone = phone;
+        await existingUser.save();
       }
     } else {
-      // 🟢 AUTO-REGISTER LOGIC
-      // Password = Email (Hashed)
       const hashedPassword = await bcrypt.hash(email, 10);
-      
-      const newUser = await User.create({
-        name,
-        email,
-        phone, // Saving the number here
-        password: hashedPassword, 
-        role: "user"
-      });
-      
-      userId = newUser._id;
+      try {
+        const newUser = await User.create({
+          name,
+          email,
+          phone, 
+          password: hashedPassword, 
+          role: "user"
+        });
+        userId = newUser._id;
+      } catch (err) {
+        return NextResponse.json({ error: "User creation failed." }, { status: 400 });
+      }
     }
 
-    // ============================================================
-    // STEP 2: Create Orders
-    // Your Model supports 1 Product per Order document.
-    // So we loop through cart items and create an Order for each.
-    // ============================================================
+    // 4. Create Order(s)
+    // Note: RupantorPay usually processes ONE total amount. 
+    // If you have multiple items, you might want to create ONE Order document with an array of products,
+    // OR create multiple orders sharing the same transactionId.
+    // Based on your schema (1 product per order), we create multiple documents.
     
     const orderPromises = cartItems.map(async (item: any) => {
-      // Double check price from DB to prevent tampering
       const dbProduct = await Product.findById(item.productId);
       if (!dbProduct) return null;
 
       return Order.create({
         user: userId,
         product: item.productId,
-        transactionId,
+        transactionId: systemTransactionId, // Same ID for all items in this cart checkout
         paymentMethod,
-        // Calculate total for this specific item (price * qty)
         amount: dbProduct.salePrice * item.quantity, 
-        status: "pending",
-        deliveredContent: {} // Empty until Admin verifies
+        status: "pending", 
+        paymentStatus: "unpaid", 
+        deliveredContent: {}
       });
     });
 
-    await Promise.all(orderPromises);
+    const createdOrders = await Promise.all(orderPromises);
+    
+    // Return the ID of the first order (or handle bundle logic) for the Payment Gateway
+    // We send back the order ID of the first item to track the group payment
+    const primaryOrder = createdOrders.find(o => o !== null);
 
     return NextResponse.json({ 
       success: true, 
-      message: "Order placed successfully! Please check your dashboard." 
+      orderId: primaryOrder._id, // Send this to initiate payment
+      transactionId: systemTransactionId
     });
 
   } catch (error: any) {
-    console.error("Checkout Error:", error);
-    return NextResponse.json({ error: error.message || "Checkout failed" }, { status: 500 });
+    console.error("Order Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// ==========================
-// GET → Fetch Orders (Admin sees All, User sees Theirs)
-// ==========================
+// ==============================================================================
+// GET: Fetch Orders (With Security)
+// ==============================================================================
 export async function GET(req: NextRequest) {
   try {
-     const session = await getServerSession(authOptions);
+    // 1. Auth Check
+    const session = await getServerSession(authOptions);
        
-    // if (!session || !session.user) {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     await connectToDatabase();
 
-    let query = {};
+    let query: any = {};
     
-    // 🟢 Security Logic: Admin vs User
-    // If Admin: show all. If User: show only their own.
-    // if (session.user.role !== "admin") {
-    //   query = { user: session.user.id };
-    // }
+    // 2. 🟢 Security Logic: Admin vs User
+    // If NOT Admin, restrict query to the logged-in user's ID
+    if (session.user.role !== "ADMIN") {
+      query = { user: session.user.id };
+    }
 
+    // 3. Fetch Orders
     const orders = await Order.find(query)
-      .populate("product", "name price thumbnail slug") // Join with Product data
-      .populate("user", "name email") // Join with User data (for Admin view)
+      .populate("product", "title thumbnail slug regularPrice salePrice") // Fetch specific product fields
+      .populate("user", "name email phone") // Fetch user details (helpful for Admin)
       .sort({ createdAt: -1 })
       .lean();
 

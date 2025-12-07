@@ -11,12 +11,16 @@ export interface IProduct extends Document {
   description: string;
   shortDescription?: string;
   features: string[];
-  category: mongoose.Types.ObjectId; // Link to Category Model
+  category: mongoose.Types.ObjectId; 
   tags: string[];
   isAvailable: boolean;
   isFeatured: boolean;
   fileType: string;
   salesCount: number;
+  
+  // 🔒 SECURE FIELDS (New)
+  accessLink?: string; // The private URL (Drive, Telegram, etc.)
+  accessNote?: string; // e.g. "Join with this password: 123"
 }
 
 const productSchema = new Schema<IProduct>(
@@ -34,16 +38,25 @@ const productSchema = new Schema<IProduct>(
     shortDescription: { type: String, maxlength: 200 },
     features: [{ type: String }],
     
-    // Relationship: Link to the Category Model we created earlier
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
-    
     tags: [{ type: String }],
     
     isAvailable: { type: Boolean, default: true },
     isFeatured: { type: Boolean, default: false },
     fileType: { type: String, default: "Credentials" },
     
-    salesCount: { type: Number, default: 0 }
+    salesCount: { type: Number, default: 0 },
+
+    // 🔒 SECURE CONTENT CONFIGURATION
+    // select: false ensures this NEVER goes to the public frontend API
+    accessLink: { 
+      type: String, 
+      select: false // <--- HIDDEN FROM PUBLIC
+    },
+    accessNote: { 
+      type: String, 
+      select: false // <--- HIDDEN FROM PUBLIC
+    }
   },
   { timestamps: true }
 );

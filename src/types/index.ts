@@ -13,6 +13,7 @@ export interface IUser {
   _id: string;
   name: string;
   email: string;
+  phone?: string;
   role: "user" | "admin";
   image?: string;
   createdAt?: string;
@@ -32,7 +33,7 @@ export interface ICategory {
 }
 
 // export const SITE_URL = "http://localhost:3000";
-export const SITE_URL = "https://proaccess-sepia.vercel.app";
+export const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 // ==========================================
 // 3. PRODUCT TYPE
 // ==========================================

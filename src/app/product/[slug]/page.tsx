@@ -4,11 +4,11 @@ import { IProduct, SITE_URL } from "@/types"; // Import your type
 import ProductDetailsClient from "@/components/ProductDetailsClient";
 
 // Helper to fetch data
-async function getProduct(slug: string): Promise<IProduct | null> {
+async function getProduct(slug: string) {
   try {
     // Replace with your actual API URL
     const res = await fetch(`${SITE_URL}/api/products/slug/${slug}`, {
-      cache: "no-store", // Ensure fresh data, or use 'force-cache' for SSG
+      cache:"force-cache", next: { revalidate: 180 }, // Ensure fresh data, or use 'force-cache' for SSG
     });
 
     if (!res.ok) return null;

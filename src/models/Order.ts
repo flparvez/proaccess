@@ -1,3 +1,4 @@
+import { IUser } from "@/types";
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 // Interface for the Secret Data (What user pays for)
@@ -9,17 +10,21 @@ interface IDeliveredContent {
 }
 
 export interface IOrder extends Document {
-  user: mongoose.Types.ObjectId;
+  user: IUser;
   product: mongoose.Types.ObjectId;
   
   // Transaction Info
   transactionId: string;
   paymentMethod: string;
   amount: number;
-  screenshot?: string; // Optional: URL if they upload proof
+  screenshot?: string; // Optional for manual payments
   
-  // Status
-  status: "pending" | "completed" | "cancelled" | "declined";
+  // ✅ Payment Status (New) - Tracks money separate from delivery
+  paymentStatus: "unpaid" | "paid" | "failed";
+
+  // ✅ Fulfillment Status - Tracks delivery
+  // 'processing' = Money received, waiting for Admin to send credentials
+  status: "pending" | "processing" | "completed" | "cancelled" | "declined";
   
   // The Digital Product Delivery
   deliveredContent?: IDeliveredContent;
@@ -39,13 +44,21 @@ const orderSchema = new Schema<IOrder>(
     amount: { type: Number, required: true },
     screenshot: { type: String },
 
+    // ✅ Track Money
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "paid", "failed"],
+      default: "unpaid"
+    },
+
+    // ✅ Track Delivery
     status: { 
       type: String, 
-      enum: ["pending", "completed", "cancelled", "declined"], 
+      enum: ["pending", "processing", "completed", "cancelled", "declined"], 
       default: "pending" 
     },
 
-    // Hidden content only filled by Admin
+    // Hidden content filled by Admin or Automation
     deliveredContent: {
       accountEmail: { type: String, default: "" },
       accountPassword: { type: String, default: "" },
