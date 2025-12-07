@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: IdParams) {
     // Note: Usually [id] implies ID, but for SEO we often look up slugs. 
     // Here we assume ID for admin editing, but we can do a hybrid check.
     
-    const product = await Product.findById(id).populate("category").lean();
+    const product = await Product.findById(id).populate("category").select("accessLink").lean();
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });

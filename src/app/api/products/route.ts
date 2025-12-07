@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const categorySlug = searchParams.get("category");
     const isFeatured = searchParams.get("featured");
-
+ await Category.find();
     let query: any = { isAvailable: true };
 
     // 1. Filter by Category
@@ -33,8 +33,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. Fetch Data
-    // Note: We do NOT need to exclude accessLink here manually.
-    // The Product Model { select: false } does it automatically.
+
     const products = await Product.find(query)
       .populate("category", "name slug") 
       .sort({ createdAt: -1 })
@@ -55,7 +54,7 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
     
     // ✅ Uncomment this for production to protect the route
-    if (!session || session.user.role !== "admin") {
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Admins only" }, { status: 403 });
     }
 
