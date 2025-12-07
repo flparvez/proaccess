@@ -14,13 +14,14 @@ const res = await fetch(`${SITE_URL}/api/orders`, {
   const orders = await res.json();
 
   // Fix MongoDB ObjectId serialization issue for Client Components
-  const formattedOrders = orders?.orders.map((order: any) => ({
+  const formattedOrders = orders?.orders?.map((order: any) => ({
     ...order,
     _id: order._id.toString(),
     user: { ...order.user, _id: order.user._id.toString() },
     product: { ...order.product, _id: order.product._id.toString() },
     createdAt: order.createdAt,
   }));
+
 
   return (
     <div className="space-y-6">

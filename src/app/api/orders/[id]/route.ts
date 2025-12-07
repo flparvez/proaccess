@@ -108,3 +108,29 @@ export async function PUT(req: NextRequest, { params }: IdParams) {
     );
   }
 }
+
+
+// ... existing imports ...
+
+export async function DELETE(req: NextRequest, { params }: IdParams) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Admins only" }, { status: 403 });
+    }
+
+    const { id } = await params;
+    await connectToDatabase();
+
+    const deletedOrder = await Order.findByIdAndDelete(id);
+
+    if (!deletedOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: "Order deleted" });
+
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
