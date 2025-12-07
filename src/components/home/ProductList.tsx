@@ -3,16 +3,17 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { IProduct } from "@/types";
-import { ShoppingCart, Heart } from "lucide-react";
-import { useCart } from "@/lib/CartContext"; 
-import { toast } from "sonner"; // Optional: For success notification
+import { ShoppingCart, ArrowRight } from "lucide-react";
+import { useCart } from "@/lib/CartContext";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 const ProductList: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // 2. Access Cart Functions
+
   const { addToCart, mapProductToCartItem } = useCart();
 
   useEffect(() => {
@@ -28,7 +29,9 @@ const ProductList: React.FC = () => {
           throw new Error(data.error || "Failed to load products");
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "An unexpected error occurred");
+        setError(
+          err instanceof Error ? err.message : "An unexpected error occurred"
+        );
       } finally {
         setLoading(false);
       }
@@ -37,26 +40,12 @@ const ProductList: React.FC = () => {
     fetchProducts();
   }, []);
 
-  // 3. Handle Add to Cart Click
   const handleAddToCart = (e: React.MouseEvent, product: IProduct) => {
-    e.preventDefault(); // Stop navigation to product details page
+    e.preventDefault();
     e.stopPropagation();
-
     const cartItem = mapProductToCartItem(product, 1);
     addToCart(cartItem);
-    
-    toast.success("Added to cart!"); // Show notification
-  };
-
-  const handleWishlist = (e: React.MouseEvent) => {
-    e.preventDefault(); // Stop navigation
-    e.stopPropagation();
-    toast("Added to wishlist (Demo)");
-  };
-
-  const getDiscount = (regular: number, sale: number) => {
-    if (!regular || !sale || regular <= sale) return 0;
-    return Math.round(((regular - sale) / regular) * 100);
+    toast.success("Added to cart!");
   };
 
   const formatPrice = (price: number) =>
@@ -68,7 +57,7 @@ const ProductList: React.FC = () => {
 
   if (loading)
     return (
-      <div className="py-12 text-center text-gray-500 text-sm sm:text-base">
+      <div className="bg-black min-h-[400px] flex items-center justify-center text-gray-400">
         Loading courses...
       </div>
     );
@@ -76,106 +65,115 @@ const ProductList: React.FC = () => {
   if (error || products.length === 0) return null;
 
   return (
-    <section className="bg-[#f7f7f8] py-6 sm:py-8">
-      <div className="mx-auto max-w-6xl px-3 sm:px-4 md:px-6">
-        <h2 className="mb-5 text-center text-lg sm:text-2xl md:text-3xl font-semibold tracking-tight text-slate-800">
-          Our Featured Courses
-        </h2>
+    <section className="bg-black py-10 text-white">
+      <div className="container mx-auto px-3 md:px-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5 md:mb-8">
+          <h2 className="text-xl md:text-3xl font-bold tracking-wide">
+            Popular Courses
+          </h2>
+          <Link
+            href="/shop"
+            className="hidden md:flex items-center text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            View All <ArrowRight className="w-4 h-4 ml-1" />
+          </Link>
+        </div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+        {/* 👉 2 columns on mobile, no gap. Gaps only from md+ */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-0 md:gap-5">
           {products.map((product) => {
             const regular = product.regularPrice;
             const sale = product.salePrice;
-            const discount = getDiscount(regular, sale);
-            const image = product.thumbnail || "/placeholder.png";
-            const title = product.title || "Untitled Course";
-            const categoryName =
-              typeof product.category === "object" && product.category
-                ? (product.category as any).name
-                : "Course";
+            const discount =
+              regular > sale
+                ? Math.round(((regular - sale) / regular) * 100)
+                : 0;
 
             return (
               <div
                 key={product._id}
-                className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+                className="group relative flex flex-col h-full bg-[#111] border border-black md:border-gray-800 md:rounded-xl overflow-hidden hover:border-gray-600 transition-all duration-300"
               >
-                <Link href={`/product/${product.slug}`} className="flex h-full flex-col">
-                  
-                  {/* Image Area */}
-                  <div className="relative overflow-hidden rounded-t-2xl bg-gray-100 aspect-[4/3]">
-                    <img
-                      src={image}
-                      alt={title}
-                      className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                <Link
+                  href={`/product/${product.slug}`}
+                  className="flex h-full flex-col"
+                >
+                  {/* Image */}
+                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-900">
+                    <Image
+                      width={500}
+                      height={500}
+                      src={product.thumbnail}
+                      alt={product.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                     />
 
-                    {/* Badges */}
-                    <div className="absolute left-2 top-2 flex flex-col gap-1">
-                      {discount > 0 && (
-                        <span className="rounded-full bg-[#19c16b] px-2 py-[2px] text-[10px] font-semibold text-white shadow-sm">
-                          {discount}% OFF
-                        </span>
-                      )}
-                      {product.isFeatured && (
-                        <span className="rounded-full bg-[#ff8a42] px-2 py-[2px] text-[10px] font-semibold text-white shadow-sm">
-                          HOT
-                        </span>
-                      )}
-                    </div>
+                    {/* Discount */}
+                    {discount > 0 && (
+                      <span className="absolute top-2 left-2 bg-lime-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        {discount}% OFF
+                      </span>
+                    )}
 
-                    {/* Wishlist Button */}
-                    <button
-                      type="button"
-                      onClick={handleWishlist}
-                      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-sm hover:text-red-500 transition-colors"
-                    >
-                      <Heart className="h-4 w-4" />
-                    </button>
+                    {/* Running / Featured */}
+                    {product.isFeatured && (
+                      <span className="absolute top-2 right-2 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
+                        HOT
+                      </span>
+                    )}
                   </div>
 
-                  {/* Content Area */}
-                  <div className="flex flex-1 flex-col px-3.5 pb-3 pt-3 sm:px-4 sm:pt-3.5 sm:pb-4">
+                  {/* Content */}
+                  <div className="flex flex-1 flex-col px-2.5 py-3 md:px-4 md:py-4">
                     <h3
-                      className="line-clamp-2 text-[13px] sm:text-sm font-semibold text-slate-900 leading-snug min-h-[2.5rem]"
-                      title={title}
+                      className="text-[12px] sm:text-sm md:text-base font-semibold text-gray-100 line-clamp-2 leading-snug mb-1.5 group-hover:text-lime-400 transition-colors"
+                      title={product.title}
                     >
-                      {title}
+                      {product.title}
                     </h3>
 
-                    <p className="mt-1 line-clamp-1 text-[11px] sm:text-xs text-slate-500 uppercase tracking-wide">
-                      {categoryName}
-                    </p>
-
-                    {/* Price */}
-                    <div className="mt-3 flex items-center justify-between text-xs sm:text-sm border-t pt-2 border-gray-50">
-                      {regular > sale ? (
-                        <span className="text-[11px] text-slate-400 line-through">
-                          {formatPrice(regular)}
+                    {/* Price + Cart */}
+                    <div className="mt-auto pt-2 md:pt-3 border-t border-gray-800 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        {regular > sale && (
+                          <span className="text-[10px] sm:text-xs text-gray-500 line-through">
+                            {formatPrice(regular)}
+                          </span>
+                        )}
+                        <span className="text-sm sm:text-lg font-extrabold text-white tracking-tight">
+                          {formatPrice(sale)}
                         </span>
-                      ) : (
-                        <span />
-                      )}
-                      <span className="text-[14px] sm:text-base font-bold text-[#19c16b]">
-                        {formatPrice(sale)}
-                      </span>
-                    </div>
+                      </div>
 
-                    {/* Add To Cart Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleAddToCart(e, product)}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 py-2.5 text-[11px] sm:text-xs font-bold uppercase tracking-wide text-white transition-all hover:bg-green-600 hover:shadow-lg active:scale-95"
-                    >
-                      <ShoppingCart className="h-3.5 w-3.5" />
-                      Add to Cart
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleAddToCart(e, product)}
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 flex items-center justify-center text-gray-300 hover:bg-white hover:text-black transition-all active:scale-95"
+                        title="Add to Cart"
+                      >
+                        <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                    </div>
                   </div>
                 </Link>
               </div>
             );
           })}
+        </div>
+
+        {/* Mobile View All Button */}
+        <div className="mt-6 flex justify-center md:hidden">
+          <Link href="/shop">
+            <Button
+              variant="outline"
+              className="border-gray-700 text-white hover:bg-gray-800 bg-transparent text-sm px-6"
+            >
+              View All Courses
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

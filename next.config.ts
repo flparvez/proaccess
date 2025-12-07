@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   images: {
-    domains: ["images.unsplash.com", "ik.imagekit.io"],
+    domains: ["images.unsplash.com", "ik.imagekit.io","github.com"],
   },
 };
 

@@ -35,7 +35,7 @@ const productSchema = new Schema<IProduct>(
     gallery: [{ type: String }],
     
     description: { type: String, required: true },
-    shortDescription: { type: String, maxlength: 200 },
+    shortDescription: { type: String, maxlength: 500 },
     features: [{ type: String }],
     
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true },

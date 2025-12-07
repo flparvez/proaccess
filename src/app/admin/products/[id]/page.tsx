@@ -1,17 +1,30 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, LayoutGrid, Loader2, Plus, X, UploadCloud, Tag, DollarSign, Info } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Save, 
+  LayoutGrid, 
+  Loader2, 
+  Plus, 
+  X, 
+  UploadCloud, 
+  Tag, 
+  DollarSign, 
+  Info,
+  Lock,
+  Link as LinkIcon
+} from "lucide-react";
 
 // Components
 import FileUpload from "@/components/Fileupload"; 
 import RichTextEditor from "@/components/RichTextEditor";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -21,27 +34,22 @@ import { Separator } from "@/components/ui/separator";
 
 interface ICategory { _id: string; name: string; }
 
-// Next.js 16 Client Page Params handling
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  // Unwrap params using React.use()
   const { id } = use(params);
   const router = useRouter();
 
-  // 1. Loading States
+  // 1. States
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // 2. Data Lists
   const [categories, setCategories] = useState<ICategory[]>([]);
   
-  // 3. Complex Form States
+  // Complex Fields
   const [thumbnail, setThumbnail] = useState<string>("");
   const [gallery, setGallery] = useState<string[]>([]);
   const [features, setFeatures] = useState<string[]>([""]); 
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
-  // 4. Basic Form Data
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
@@ -53,25 +61,25 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     fileType: "Credentials",
     isAvailable: true,
     isFeatured: false,
+    // ✅ NEW FIELDS
+    accessLink: "",
+    accessNote: ""
   });
 
-  // 5. Calculations
   const regPrice = Number(formData.regularPrice) || 0;
   const salePrice = Number(formData.salePrice) || 0;
   const discountPercent = regPrice > salePrice 
     ? Math.round(((regPrice - salePrice) / regPrice) * 100) 
     : 0;
 
-  // --- Initialization: Fetch Product & Categories ---
+  // --- Fetch Data ---
   useEffect(() => {
     const initData = async () => {
       try {
-        // Fetch Categories
         const catRes = await fetch("/api/categories");
         const catData = await catRes.json();
         setCategories(catData.categories || []);
 
-        // Fetch Product Data
         const prodRes = await fetch(`/api/products/${id}`);
         const prodJson = await prodRes.json();
         
@@ -79,27 +87,29 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
         const product = prodJson.product;
 
-        // Populate State
         setFormData({
             title: product.title,
             slug: product.slug,
             shortDescription: product.shortDescription || "",
-            description: product.description,
+            description: product.description || "",
             regularPrice: String(product.regularPrice),
             salePrice: String(product.salePrice),
-            categoryId: product.category._id || product.category, // Handle populated vs unpopulated
+            categoryId: typeof product.category === 'object' ? product.category._id : product.category,
             fileType: product.fileType || "Credentials",
             isAvailable: product.isAvailable,
-            isFeatured: product.isFeatured
+            isFeatured: product.isFeatured,
+            // ✅ POPULATE HIDDEN FIELDS
+            accessLink: product.accessLink || "",
+            accessNote: product.accessNote || ""
         });
         
-        setThumbnail(product.thumbnail);
+        setThumbnail(product.thumbnail || "");
         setGallery(product.gallery || []);
         setFeatures(product.features && product.features.length > 0 ? product.features : [""]);
         setTags(product.tags || []);
 
       } catch (e) {
-        toast.error("Failed to load product data");
+        toast.error("Failed to load product");
         router.push("/admin/products");
       } finally {
         setLoading(false);
@@ -109,22 +119,20 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     if (id) initData();
   }, [id, router]);
 
-  // --- Handlers (Identical to Create Page) ---
-
+  // --- Handlers (Standard) ---
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Note: We typically don't auto-update slug on Edit to preserve SEO links
   };
 
   const handleDescriptionChange = (html: string) => {
     setFormData(prev => ({ ...prev, description: html }));
   };
 
-  const handleImagePick = async (): Promise<string | null> => {
+  const handleImagePick = useCallback(async (): Promise<string | null> => {
     const url = prompt("Enter image URL");
     return url ? url : null;
-  }
+  }, []);
 
   const handleFeatureChange = (index: number, value: string) => {
     const newFeatures = [...features];
@@ -149,10 +157,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   };
   const removeTag = (t: string) => setTags(tags.filter(tag => tag !== t));
 
-  // --- Submit Logic (PUT) ---
+  // --- Submit ---
   const handleSubmit = async () => {
-    if (!formData.title) return toast.error("Product Title is required");
-    if (!formData.regularPrice) return toast.error("Regular Price is required");
+    if (!formData.title) return toast.error("Title required");
     
     setSaving(true);
     try {
@@ -165,6 +172,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         tags,
         features: features.filter(f => f.trim() !== ""),
         category: formData.categoryId, 
+        // ✅ Include new fields
+        accessLink: formData.accessLink,
+        accessNote: formData.accessNote
       };
 
       const res = await fetch(`/api/products/${id}`, {
@@ -174,13 +184,13 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update product");
+      if (!res.ok) throw new Error(data.error || "Failed to update");
 
       toast.success("✅ Product Updated Successfully!");
       router.push("/admin/products");
       router.refresh();
     } catch (error: any) {
-      toast.error(error.message || "Something went wrong");
+      toast.error(error.message);
     } finally {
       setSaving(false);
     }
@@ -211,7 +221,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => router.back()} className="hidden sm:flex">Cancel</Button>
-          <Button onClick={handleSubmit} disabled={saving} className="bg-primary text-primary-foreground min-w-[140px] shadow-sm">
+          <Button onClick={handleSubmit} disabled={saving} className="bg-primary text-primary-foreground min-w-[130px] shadow-sm">
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>}
             Update Changes
           </Button>
@@ -220,10 +230,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* === LEFT COLUMN (8 cols) === */}
+        {/* === LEFT COLUMN === */}
         <div className="lg:col-span-8 space-y-8">
           
-          {/* 1. General Info */}
           <Card className="border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -232,26 +241,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label className="text-base font-semibold">Product Title <span className="text-red-500">*</span></Label>
-                <Input 
-                  name="title" 
-                  value={formData.title} 
-                  onChange={handleChange} 
-                  className="h-12 text-lg font-medium"
-                />
+                <Label>Product Title</Label>
+                <Input name="title" value={formData.title} onChange={handleChange} className="h-12 text-lg font-medium" />
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Slug (URL Path)</Label>
+                  <Label>Slug</Label>
                   <Input name="slug" value={formData.slug} onChange={handleChange} />
                 </div>
                 <div className="space-y-2">
                   <Label>Delivery Type</Label>
-                  <Select 
-                    value={formData.fileType} 
-                    onValueChange={(v) => setFormData(prev => ({...prev, fileType: v}))}
-                  >
+                  <Select value={formData.fileType} onValueChange={(v) => setFormData(prev => ({...prev, fileType: v}))}>
                     <SelectTrigger><SelectValue/></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Credentials">Account Credentials</SelectItem>
@@ -262,217 +262,120 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                   </Select>
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label>Short Description</Label>
-                <Textarea 
-                  name="shortDescription" 
-                  value={formData.shortDescription} 
-                  onChange={handleChange} 
-                  className="resize-none h-24"
-                />
+                <Textarea name="shortDescription" value={formData.shortDescription} onChange={handleChange} className="resize-none h-24" />
               </div>
-
               <div className="space-y-2">
                 <Label>Detailed Description</Label>
                 <div className="border rounded-md overflow-hidden min-h-[300px]">
-                  <RichTextEditor 
-                    value={formData.description} 
-                    onChange={handleDescriptionChange} 
-                    onPickImage={handleImagePick}
-                  />
+                  <RichTextEditor value={formData.description} onChange={handleDescriptionChange} onPickImage={handleImagePick} />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* 2. Media Upload */}
-          <Card className="border-border/60 shadow-sm">
+          {/* ✅ DIGITAL DELIVERY CARD (NEW) */}
+          <Card className="border-green-200 bg-green-50/30 shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <UploadCloud className="w-5 h-5 text-muted-foreground"/> Media Assets
+              <CardTitle className="flex items-center gap-2 text-lg text-green-800">
+                <Lock className="w-5 h-5"/> Digital Delivery
               </CardTitle>
+              <CardDescription>
+                This content will be automatically delivered to the user after payment.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <Label className="text-base">Thumbnail Image</Label>
-                <div className="p-1 border rounded-xl bg-muted/20">
-                  <FileUpload 
-                    initialImages={thumbnail ? [thumbnail] : []}
-                    onChange={(urls) => setThumbnail(urls[0] || "")} 
+              <div className="space-y-2">
+                <Label>Resource Link / Download URL</Label>
+                <div className="relative">
+                  <LinkIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    name="accessLink" 
+                    value={formData.accessLink} 
+                    onChange={handleChange} 
+                    placeholder="e.g. https://drive.google.com/..." 
+                    className="pl-9 bg-white"
                   />
                 </div>
               </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <Label className="text-base">Gallery Images</Label>
-                <FileUpload 
-                  initialImages={gallery}
-                  onChange={(urls) => setGallery(urls)} 
+              <div className="space-y-2">
+                <Label>Access Note / Credentials</Label>
+                <Textarea 
+                  name="accessNote" 
+                  value={formData.accessNote} 
+                  onChange={handleChange} 
+                  placeholder="e.g. Password: 1234 or Join this Telegram Channel..."
+                  className="resize-none h-24 bg-white"
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* 3. Features List */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Product Features</CardTitle>
-              <Button type="button" variant="secondary" size="sm" onClick={addFeature}>
-                <Plus className="w-4 h-4 mr-1"/> Add Feature
-              </Button>
-            </CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><UploadCloud className="w-5 h-5 text-muted-foreground"/> Media Assets</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <Label>Thumbnail Image</Label>
+                <div className="p-1 border rounded-xl bg-muted/20">
+                  <FileUpload initialImages={thumbnail ? [thumbnail] : []} onChange={(urls) => setThumbnail(urls[0] || "")} />
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-3">
+                <Label>Gallery Images</Label>
+                <FileUpload initialImages={gallery} onChange={(urls) => setGallery(urls)} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/60 shadow-sm">
+            <CardHeader><CardTitle className="text-lg">Product Features</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {features.map((feature, index) => (
                 <div key={index} className="flex gap-3 items-center group">
-                  <div className="grid place-items-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                    {index + 1}
-                  </div>
-                  <Input 
-                    value={feature} 
-                    onChange={(e) => handleFeatureChange(index, e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => removeFeature(index)}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+                  <Input value={feature} onChange={(e) => handleFeatureChange(index, e.target.value)} className="flex-1" />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeFeature(index)} className="text-muted-foreground hover:text-destructive"><X className="w-4 h-4" /></Button>
                 </div>
               ))}
+              <Button type="button" variant="secondary" size="sm" onClick={addFeature}><Plus className="w-4 h-4 mr-1"/> Add Feature</Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* === RIGHT COLUMN (4 cols) === */}
+        {/* === RIGHT COLUMN === */}
         <div className="lg:col-span-4 space-y-8">
-
-          {/* 1. Status & Org */}
+          {/* ... (Same Right Column: Org, Pricing, Tags) ... */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Organization</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">Organization</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Available</Label>
-                    <p className="text-xs text-muted-foreground">Visible to customers</p>
-                  </div>
-                  <Switch 
-                    checked={formData.isAvailable} 
-                    onCheckedChange={(c) => setFormData(prev => ({...prev, isAvailable: c}))} 
-                  />
-                </div>
+                <div className="flex items-center justify-between"><div className="space-y-0.5"><Label>Available</Label></div><Switch checked={formData.isAvailable} onCheckedChange={(c) => setFormData(prev => ({...prev, isAvailable: c}))} /></div>
                 <Separator />
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Featured</Label>
-                    <p className="text-xs text-muted-foreground">Pin to homepage</p>
-                  </div>
-                  <Switch 
-                    checked={formData.isFeatured} 
-                    onCheckedChange={(c) => setFormData(prev => ({...prev, isFeatured: c}))} 
-                  />
-                </div>
+                <div className="flex items-center justify-between"><div className="space-y-0.5"><Label>Featured</Label></div><Switch checked={formData.isFeatured} onCheckedChange={(c) => setFormData(prev => ({...prev, isFeatured: c}))} /></div>
               </div>
-
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Select 
-                  value={formData.categoryId} 
-                  onValueChange={(v) => setFormData(prev => ({...prev, categoryId: v}))}
-                >
-                  <SelectTrigger className="h-10"><SelectValue placeholder="Select Category" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map(cat => (
-                      <SelectItem key={cat._id} value={cat._id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="space-y-2"><Label>Category</Label><Select value={formData.categoryId} onValueChange={(v) => setFormData(prev => ({...prev, categoryId: v}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{categories.map(cat => <SelectItem key={cat._id} value={cat._id}>{cat.name}</SelectItem>)}</SelectContent></Select></div>
             </CardContent>
           </Card>
 
-          {/* 2. Pricing */}
           <Card className="border-border/60 shadow-sm overflow-hidden">
-            <CardHeader className="bg-muted/30 pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign className="w-5 h-5 text-muted-foreground"/> Pricing
-              </CardTitle>
-            </CardHeader>
+            <CardHeader className="bg-muted/30 pb-4"><CardTitle className="flex items-center gap-2 text-lg"><DollarSign className="w-5 h-5"/> Pricing</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
-              <div className="space-y-2">
-                <Label>Regular Price (MRP)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-muted-foreground font-bold">৳</span>
-                  <Input 
-                    name="regularPrice" 
-                    type="number" 
-                    value={formData.regularPrice} 
-                    onChange={handleChange} 
-                    className="pl-8" 
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Sale Price (Selling)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-green-600 font-bold">৳</span>
-                  <Input 
-                    name="salePrice" 
-                    type="number" 
-                    value={formData.salePrice} 
-                    onChange={handleChange} 
-                    className="pl-8 font-bold text-green-700 border-green-200 bg-green-50/20" 
-                  />
-                </div>
-              </div>
-
-              {discountPercent > 0 ? (
-                <div className="rounded-md bg-green-100 border border-green-200 p-3 flex justify-between items-center">
-                  <div className="flex gap-2 items-center text-sm font-medium text-green-800">
-                     <Tag className="w-4 h-4" /> Discount
-                  </div>
-                  <Badge variant="default" className="bg-green-600">
-                    {discountPercent}% OFF
-                  </Badge>
-                </div>
-              ) : null}
+              <div className="space-y-2"><Label>Regular Price (MRP)</Label><Input name="regularPrice" type="number" value={formData.regularPrice} onChange={handleChange} className="pl-4" /></div>
+              <div className="space-y-2"><Label>Sale Price (Selling)</Label><Input name="salePrice" type="number" value={formData.salePrice} onChange={handleChange} className="pl-4 font-bold text-green-700 bg-green-50/20" /></div>
+              {discountPercent > 0 && (<div className="rounded-md bg-green-100 border border-green-200 p-3 flex justify-between items-center"><div className="flex gap-2 items-center text-sm font-medium text-green-800"><Tag className="w-4 h-4" /> Discount</div><Badge variant="default" className="bg-green-600">{discountPercent}% OFF</Badge></div>)}
             </CardContent>
           </Card>
 
-          {/* 3. Tags */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Tags & Keywords</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">Tags</CardTitle></CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2 mb-3 min-h-[40px] border p-2 rounded-lg bg-background">
-                {tags.map(tag => (
-                  <Badge key={tag} variant="secondary" className="pl-2 pr-1 py-1 gap-1 text-xs">
-                    {tag} 
-                    <X className="w-3 h-3 cursor-pointer hover:text-destructive" onClick={() => removeTag(tag)}/>
-                  </Badge>
-                ))}
-                <input 
-                  className="flex-1 bg-transparent border-none outline-none text-sm min-w-[80px] h-6"
-                  placeholder={tags.length === 0 ? "Type tag & Enter..." : ""}
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleTagKeyDown}
-                />
+                {tags.map(tag => (<Badge key={tag} variant="secondary" className="pl-2 pr-1 py-1 gap-1 text-xs">{tag} <X className="w-3 h-3 cursor-pointer hover:text-destructive" onClick={() => removeTag(tag)}/></Badge>))}
+                <input className="flex-1 bg-transparent border-none outline-none text-sm min-w-[80px] h-6" placeholder={tags.length===0?"Type & Enter...":""} value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} />
               </div>
             </CardContent>
           </Card>
-
         </div>
       </div>
     </motion.div>

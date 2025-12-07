@@ -9,29 +9,29 @@ import {
   CarouselNext, 
   CarouselPrevious 
 } from "@/components/ui/carousel";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { IProduct } from "@/types"; // Use the consolidated type definition
+import { IProduct } from "@/types";
+import { ArrowRight, TrendingUp } from "lucide-react";
 
 export default function FeaturedCourses({ products }: { products: IProduct[] }) {
   
   if (!products || products.length === 0) return null;
 
   return (
-    <section className="py-12 bg-white">
-      <div className="container mx-auto px-4 md:px-8">
+    <section className="py-16 bg-[#0a0a0a] text-white">
+      <div className="container mx-auto px-4 md:px-6">
         
         {/* Header */}
-        <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-800 uppercase tracking-tight">
-            Our Featured Courses
+        <div className="flex items-center gap-3 mb-8">
+          <TrendingUp className="w-6 h-6 text-white" />
+          <h2 className="text-2xl md:text-3xl font-serif font-bold tracking-wide">
+            Trending Courses
           </h2>
         </div>
 
-        {/* The Green Border Container */}
-        <div className="relative border-2 border-green-500 rounded-3xl p-6 md:p-10">
-          
+        {/* Carousel Container */}
+        <div className="relative">
           <Carousel
             opts={{
               align: "start",
@@ -40,95 +40,85 @@ export default function FeaturedCourses({ products }: { products: IProduct[] }) 
             className="w-full"
           >
             <CarouselContent className="-ml-4">
-              {products.map((product) => {
-                // 1. Calculate Discount
-                const discount = product.regularPrice > product.salePrice
-                  ? Math.round(((product.regularPrice - product.salePrice) / product.regularPrice) * 100)
-                  : 0;
-
-                // 2. Safe Category Access (Handle populated object vs string ID)
-                const categoryName = typeof product.category === 'object' && product.category 
-                  ? product.category.name 
-                  : "Digital Product";
-
-                return (
-                  <CarouselItem key={product._id} className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
-                    <Link href={`/product/${product.slug}`} className="group h-full block">
-                      <Card className="h-full border-0 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden bg-white group-hover:-translate-y-1">
+              {products.map((product) => (
+                <CarouselItem key={product._id} className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <Link href={`/product/${product.slug}`} className="group block h-full">
+                    <div className="h-full bg-[#111] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-colors duration-300 flex flex-col">
+                      
+                      {/* Image Area */}
+                      <div className="relative aspect-video w-full overflow-hidden">
+                        <Image
+                          src={product.thumbnail}
+                          alt={product.title}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
                         
-                        {/* Image Area */}
-                        <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
-                          <Image
-                            src={product.thumbnail} // ✅ Correct Field
-                            alt={product.title}
-                            fill
-                            className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                          
-                          {/* Discount Badge */}
-                          {discount > 0 && (
-                            <Badge className="absolute top-3 left-3 bg-green-500 hover:bg-green-600 text-white font-bold border-0 px-2 py-1 shadow-sm">
-                              -{discount}%
-                            </Badge>
-                          )}
+                        {/* Status Badge (Top Right) */}
+                        <Badge className="absolute top-3 right-3 bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-md">
+                          RUNNING
+                        </Badge>
 
-                          {/* HOT Badge (If Featured) */}
-                          {product.isFeatured && (
-                             <Badge className="absolute top-3 left-16 bg-orange-500 hover:bg-orange-600 text-white font-bold border-0 px-2 py-1 shadow-sm">
-                               HOT
-                             </Badge>
-                          )}
+                        {/* Optional: Discount Badge (Top Left) */}
+                        {product.regularPrice > product.salePrice && (
+                           <Badge className="absolute top-3 left-3 bg-yellow-500 text-black hover:bg-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded shadow-md">
+                             {Math.round(((product.regularPrice - product.salePrice) / product.regularPrice) * 100)}% OFF
+                           </Badge>
+                        )}
+                      </div>
 
-                          {/* Hover Overlay */}
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                             <Button className="bg-white text-black hover:bg-green-500 hover:text-white rounded-full font-bold shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                                View Details
-                             </Button>
-                          </div>
-                        </div>
-
-                        {/* Content Area */}
-                        <CardContent className="p-4 flex flex-col gap-2">
-                          <h3 className="font-bold text-slate-800 line-clamp-2 min-h-[3rem] group-hover:text-green-600 transition-colors">
-                            {product.title}
-                          </h3>
-                          
-                          <p className="text-xs text-slate-500 line-clamp-1 uppercase tracking-wide">
-                            {categoryName}
-                          </p>
-                          
-                          {/* Price Section */}
-                          <div className="mt-auto pt-2 flex items-center justify-between border-t border-slate-100">
+                      {/* Content Area */}
+                      <div className="p-5 flex flex-col flex-1">
+                        {/* Title */}
+                        <h3 className="text-lg font-bold text-gray-100 line-clamp-2 leading-snug min-h-[3.5rem] mb-3 group-hover:text-green-400 transition-colors">
+                          {product.title}
+                        </h3>
+                        
+                        {/* Price Section (Push to bottom) */}
+                        <div className="mt-auto pt-4 border-t border-gray-800 flex items-center justify-between">
+                          <div className="flex flex-col">
                             {product.regularPrice > product.salePrice && (
-                                <span className="text-sm text-slate-400 line-through decoration-slate-400">
-                                   ৳{product.regularPrice.toLocaleString()}
-                                </span>
+                              <span className="text-xs text-gray-500 line-through">
+                                ৳{product.regularPrice}
+                              </span>
                             )}
-                            <span className="text-xl font-extrabold text-green-600">
-                               ৳{product.salePrice.toLocaleString()}
+                            <span className="text-2xl font-extrabold text-white tracking-tight">
+                              ৳{product.salePrice}
                             </span>
                           </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  </CarouselItem>
-                );
-              })}
+                          
+                          {/* Arrow Icon on Hover */}
+                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-green-600 transition-colors">
+                             <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-white" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </CarouselItem>
+              ))}
             </CarouselContent>
             
-            {/* Navigation Buttons */}
-            <CarouselPrevious className="absolute -left-4 top-1/2 -translate-y-1/2 bg-white border shadow-lg hover:bg-green-50 hover:text-green-600 w-10 h-10 lg:w-12 lg:h-12" />
-            <CarouselNext className="absolute -right-4 top-1/2 -translate-y-1/2 bg-white border shadow-lg hover:bg-green-50 hover:text-green-600 w-10 h-10 lg:w-12 lg:h-12" />
+            {/* Minimalist Navigation Buttons (Top Right) */}
+            <div className="hidden md:flex absolute -top-14 right-0 gap-2">
+               <CarouselPrevious className="static translate-y-0 bg-[#1a1a1a] border-gray-700 text-white hover:bg-white hover:text-black w-9 h-9" />
+               <CarouselNext className="static translate-y-0 bg-[#1a1a1a] border-gray-700 text-white hover:bg-white hover:text-black w-9 h-9" />
+            </div>
           </Carousel>
-
-          {/* Visual Pagination Dots */}
-          <div className="flex justify-center gap-2 mt-8">
-             {[...Array(Math.min(products.length, 5))].map((_, i) => (
-                <div key={i} className={`w-2.5 h-2.5 rounded-full transition-colors ${i === 0 ? 'bg-green-500 scale-125' : 'bg-slate-200'}`}></div>
-             ))}
-          </div>
-
         </div>
+
+        {/* View All Button */}
+        <div className="mt-12 flex justify-center">
+          <Link href="/shop">
+            <Button 
+              size="lg" 
+              className="bg-white text-black hover:bg-gray-200 px-8 py-6 text-base font-bold rounded-full transition-transform hover:scale-105"
+            >
+              View All Courses <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          </Link>
+        </div>
+
       </div>
     </section>
   );

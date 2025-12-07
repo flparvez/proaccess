@@ -14,7 +14,9 @@ import {
   UploadCloud, 
   Tag, 
   DollarSign,
-  Info
+  Info,
+  Lock, // Added Lock icon
+  Link as LinkIcon // Added Link icon
 } from "lucide-react";
 
 // --- Components ---
@@ -39,21 +41,16 @@ interface ICategory {
 export default function CreateProduct() {
   const router = useRouter();
 
-  // 1. Loading States
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // 2. Data Lists
   const [categories, setCategories] = useState<ICategory[]>([]);
   
-  // 3. Complex Form States
   const [thumbnail, setThumbnail] = useState<string>("");
   const [gallery, setGallery] = useState<string[]>([]);
   const [features, setFeatures] = useState<string[]>([""]); 
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
-  // 4. Basic Form Data
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
@@ -65,16 +62,17 @@ export default function CreateProduct() {
     fileType: "Credentials",
     isAvailable: true,
     isFeatured: false,
+    // ✅ NEW FIELDS
+    accessLink: "",
+    accessNote: ""
   });
 
-  // 5. Calculations
   const regPrice = Number(formData.regularPrice) || 0;
   const salePrice = Number(formData.salePrice) || 0;
   const discountPercent = regPrice > salePrice 
     ? Math.round(((regPrice - salePrice) / regPrice) * 100) 
     : 0;
 
-  // --- Initialization ---
   useEffect(() => {
     const fetchCats = async () => {
       try {
@@ -90,13 +88,10 @@ export default function CreateProduct() {
     fetchCats();
   }, []);
 
-  // --- Handlers ---
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => {
       const newData = { ...prev, [name]: value };
-      // Auto-Slug Logic
       if (name === "title" && !prev.slug) {
         newData.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
       }
@@ -108,12 +103,11 @@ export default function CreateProduct() {
     setFormData(prev => ({ ...prev, description: html }));
   };
 
-  // Simple prompt for image picker in RichText (can be upgraded to modal later)
   const handleImagePick = useCallback(async (): Promise<string | null> => {
     const url = prompt("Enter image URL");
     return url ? url : null;
   }, []);
-  // Feature Logic
+
   const handleFeatureChange = (index: number, value: string) => {
     const newFeatures = [...features];
     newFeatures[index] = value;
@@ -122,7 +116,6 @@ export default function CreateProduct() {
   const addFeature = () => setFeatures([...features, ""]);
   const removeFeature = (index: number) => setFeatures(features.filter((_, i) => i !== index));
 
-  // Tag Logic
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
@@ -132,16 +125,13 @@ export default function CreateProduct() {
         setTagInput("");
       }
     }
-    // UX: Remove last tag on backspace if input empty
     if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
       setTags(tags.slice(0, -1));
     }
   };
   const removeTag = (t: string) => setTags(tags.filter(tag => tag !== t));
 
-  // --- Submit Logic ---
   const handleSubmit = async () => {
-    // Validation
     if (!formData.title) return toast.error("Product Title is required");
     if (!formData.regularPrice) return toast.error("Regular Price is required");
     if (!formData.salePrice) return toast.error("Sale Price is required");
@@ -159,6 +149,9 @@ export default function CreateProduct() {
         tags,
         features: features.filter(f => f.trim() !== ""),
         category: formData.categoryId, 
+        // ✅ Include new fields in payload
+        accessLink: formData.accessLink,
+        accessNote: formData.accessNote
       };
 
       const res = await fetch("/api/products", {
@@ -192,7 +185,6 @@ export default function CreateProduct() {
       animate={{ opacity: 1, y: 0 }} 
       className="w-full pb-20 max-w-7xl mx-auto px-4 sm:px-6"
     >
-      {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b -mx-6 px-6 py-4 mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-muted">
@@ -217,7 +209,6 @@ export default function CreateProduct() {
         {/* === LEFT COLUMN (8 cols) === */}
         <div className="lg:col-span-8 space-y-8">
           
-          {/* 1. General Info */}
           <Card className="border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -272,7 +263,7 @@ export default function CreateProduct() {
                   name="shortDescription" 
                   value={formData.shortDescription} 
                   onChange={handleChange} 
-                  placeholder="Brief summary for the product card and search results..."
+                  placeholder="Brief summary for the product card..."
                   className="resize-none h-24"
                 />
               </div>
@@ -290,7 +281,43 @@ export default function CreateProduct() {
             </CardContent>
           </Card>
 
-          {/* 2. Media Upload */}
+          {/* ✅ DIGITAL DELIVERY CARD (NEW) */}
+          <Card className="border-green-200 bg-green-50/30 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg text-green-800">
+                <Lock className="w-5 h-5"/> Digital Delivery
+              </CardTitle>
+              <CardDescription>
+                This content will be automatically delivered to the user after payment.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Resource Link / Download URL</Label>
+                <div className="relative">
+                  <LinkIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    name="accessLink" 
+                    value={formData.accessLink} 
+                    onChange={handleChange} 
+                    placeholder="e.g. https://drive.google.com/..." 
+                    className="pl-9 bg-white"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Access Note / Credentials</Label>
+                <Textarea 
+                  name="accessNote" 
+                  value={formData.accessNote} 
+                  onChange={handleChange} 
+                  placeholder="e.g. Password: 1234 or Join this Telegram Channel..."
+                  className="resize-none h-24 bg-white"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -299,47 +326,36 @@ export default function CreateProduct() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
-                <Label className="text-base">Thumbnail Image <span className="text-red-500">*</span></Label>
+                <Label>Thumbnail Image <span className="text-red-500">*</span></Label>
                 <div className="p-1 border rounded-xl bg-muted/20">
                   <FileUpload 
                     initialImages={thumbnail ? [thumbnail] : []}
                     onChange={(urls) => setThumbnail(urls[0] || "")} 
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Main image shown on the shop page. Recommended size: 1200x900px.</p>
               </div>
-
               <Separator />
-
               <div className="space-y-3">
-                <Label className="text-base">Gallery Images</Label>
+                <Label>Gallery Images</Label>
                 <FileUpload 
                   initialImages={gallery}
                   onChange={(urls) => setGallery(urls)} 
                 />
-                <p className="text-xs text-muted-foreground">Additional screenshots to show product details.</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* 3. Features List */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle className="text-lg">Product Features</CardTitle>
-              <Button type="button" variant="secondary" size="sm" onClick={addFeature}>
-                <Plus className="w-4 h-4 mr-1"/> Add Feature
-              </Button>
             </CardHeader>
             <CardContent className="space-y-3">
               {features.map((feature, index) => (
                 <div key={index} className="flex gap-3 items-center group">
-                  <div className="grid place-items-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                    {index + 1}
-                  </div>
                   <Input 
                     value={feature} 
                     onChange={(e) => handleFeatureChange(index, e.target.value)}
-                    placeholder="e.g. Lifetime Access & Updates"
+                    placeholder="e.g. Lifetime Access"
                     className="flex-1"
                   />
                   <Button 
@@ -347,149 +363,81 @@ export default function CreateProduct() {
                     variant="ghost" 
                     size="icon" 
                     onClick={() => removeFeature(index)}
-                    className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-muted-foreground hover:text-destructive"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
               ))}
-              {features.length === 0 && <p className="text-sm text-muted-foreground italic text-center py-4">No features added yet.</p>}
+              <Button type="button" variant="secondary" size="sm" onClick={addFeature}>
+                <Plus className="w-4 h-4 mr-1"/> Add Feature
+              </Button>
             </CardContent>
           </Card>
         </div>
 
         {/* === RIGHT COLUMN (4 cols) === */}
         <div className="lg:col-span-4 space-y-8">
-
-          {/* 1. Status & Org */}
+          {/* ... (Same Right Column as before: Org, Pricing, Tags) ... */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Organization</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">Organization</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Available</Label>
-                    <p className="text-xs text-muted-foreground">Visible to customers</p>
-                  </div>
-                  <Switch 
-                    checked={formData.isAvailable} 
-                    onCheckedChange={(c) => setFormData(prev => ({...prev, isAvailable: c}))} 
-                  />
+                  <div className="space-y-0.5"><Label>Available</Label></div>
+                  <Switch checked={formData.isAvailable} onCheckedChange={(c) => setFormData(prev => ({...prev, isAvailable: c}))} />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Featured</Label>
-                    <p className="text-xs text-muted-foreground">Pin to homepage</p>
-                  </div>
-                  <Switch 
-                    checked={formData.isFeatured} 
-                    onCheckedChange={(c) => setFormData(prev => ({...prev, isFeatured: c}))} 
-                  />
+                  <div className="space-y-0.5"><Label>Featured</Label></div>
+                  <Switch checked={formData.isFeatured} onCheckedChange={(c) => setFormData(prev => ({...prev, isFeatured: c}))} />
                 </div>
               </div>
-
               <div className="space-y-2">
-                <Label>Category <span className="text-red-500">*</span></Label>
-                <Select 
-                  value={formData.categoryId} 
-                  onValueChange={(v) => setFormData(prev => ({...prev, categoryId: v}))}
-                >
-                  <SelectTrigger className="h-10"><SelectValue placeholder="Select Category" /></SelectTrigger>
+                <Label>Category</Label>
+                <Select value={formData.categoryId} onValueChange={(v) => setFormData(prev => ({...prev, categoryId: v}))}>
+                  <SelectTrigger><SelectValue placeholder="Select Category" /></SelectTrigger>
                   <SelectContent>
-                    {categories.map(cat => (
-                      <SelectItem key={cat._id} value={cat._id}>{cat.name}</SelectItem>
-                    ))}
+                    {categories.map(cat => <SelectItem key={cat._id} value={cat._id}>{cat.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </CardContent>
           </Card>
 
-          {/* 2. Pricing */}
           <Card className="border-border/60 shadow-sm overflow-hidden">
-            <CardHeader className="bg-muted/30 pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign className="w-5 h-5 text-muted-foreground"/> Pricing
-              </CardTitle>
-            </CardHeader>
+            <CardHeader className="bg-muted/30 pb-4"><CardTitle className="flex items-center gap-2 text-lg"><DollarSign className="w-5 h-5"/> Pricing</CardTitle></CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
                 <Label>Regular Price (MRP)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-muted-foreground font-bold">৳</span>
-                  <Input 
-                    name="regularPrice" 
-                    type="number" 
-                    value={formData.regularPrice} 
-                    onChange={handleChange} 
-                    className="pl-8" 
-                    placeholder="0"
-                  />
-                </div>
+                <Input name="regularPrice" type="number" value={formData.regularPrice} onChange={handleChange} className="pl-4" />
               </div>
-
               <div className="space-y-2">
                 <Label>Sale Price (Selling)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-green-600 font-bold">৳</span>
-                  <Input 
-                    name="salePrice" 
-                    type="number" 
-                    value={formData.salePrice} 
-                    onChange={handleChange} 
-                    className="pl-8 font-bold text-green-700 border-green-200 bg-green-50/20" 
-                    placeholder="0"
-                  />
-                </div>
+                <Input name="salePrice" type="number" value={formData.salePrice} onChange={handleChange} className="pl-4 font-bold text-green-700 bg-green-50/20" />
               </div>
-
-              {/* Discount Badge */}
-              {discountPercent > 0 ? (
-                <div className="rounded-md bg-green-100 dark:bg-green-900/30 border border-green-200 p-3 flex justify-between items-center">
-                  <div className="flex gap-2 items-center text-sm font-medium text-green-800 dark:text-green-300">
-                     <Tag className="w-4 h-4" /> Discount
-                  </div>
-                  <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                    {discountPercent}% OFF
-                  </Badge>
-                </div>
-              ) : (
-                <div className="rounded-md bg-muted p-3 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Info className="w-4 h-4" />
-                  <span>Set a lower Sale Price to show a discount badge.</span>
+              {discountPercent > 0 && (
+                <div className="rounded-md bg-green-100 border border-green-200 p-3 flex justify-between items-center">
+                  <div className="flex gap-2 items-center text-sm font-medium text-green-800"><Tag className="w-4 h-4" /> Discount</div>
+                  <Badge variant="default" className="bg-green-600">{discountPercent}% OFF</Badge>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* 3. Tags */}
           <Card className="border-border/60 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Tags & Keywords</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">Tags</CardTitle></CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2 mb-3 min-h-[40px] border p-2 rounded-lg bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <div className="flex flex-wrap gap-2 mb-3 min-h-[40px] border p-2 rounded-lg bg-background">
                 {tags.map(tag => (
                   <Badge key={tag} variant="secondary" className="pl-2 pr-1 py-1 gap-1 text-xs">
-                    {tag} 
-                    <X className="w-3 h-3 cursor-pointer hover:text-destructive transition-colors" onClick={() => removeTag(tag)}/>
+                    {tag} <X className="w-3 h-3 cursor-pointer hover:text-destructive" onClick={() => removeTag(tag)}/>
                   </Badge>
                 ))}
-                <input 
-                  className="flex-1 bg-transparent border-none outline-none text-sm min-w-[80px] h-6"
-                  placeholder={tags.length === 0 ? "Type tag & Enter..." : ""}
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleTagKeyDown}
-                />
+                <input className="flex-1 bg-transparent border-none outline-none text-sm min-w-[80px] h-6" placeholder={tags.length===0?"Type & Enter...":""} value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} />
               </div>
-              <p className="text-xs text-muted-foreground">Press <strong>Enter</strong> or <strong>Comma</strong> to add.</p>
             </CardContent>
           </Card>
-
         </div>
       </div>
     </motion.div>

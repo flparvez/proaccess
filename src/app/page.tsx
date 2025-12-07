@@ -1,5 +1,6 @@
-import FeaturesStrip from "@/components/FeaturesStrip";
-import HeroSlider from "@/components/HeroSlider";
+
+import CategorySection from "@/components/CategorySLider";
+import HeroSection from "@/components/HeroSlider";
 import FeaturedCourses from "@/components/home/FeaturedCourses"
 import ProductList from "@/components/home/ProductList";
 
@@ -16,11 +17,11 @@ export default async function Home() {
         
   return (
 <div>
-  <HeroSlider />
-<FeaturesStrip />
+  <HeroSection />
+<CategorySection />
   <FeaturedCourses products={data.products} />
   <ProductList />
-  <h2>test</h2>
+  
 </div>
   );
 }
