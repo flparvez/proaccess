@@ -4,9 +4,9 @@ import { User } from "@/models/User";
 import { Product } from "@/models/Product";
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
-import { nanoid } from "nanoid"; // Install this: npm i nanoid
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+
 
 export async function POST(req: Request) {
   try {
@@ -20,22 +20,42 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    // 2. Generate Unique Transaction ID for the System
-    // Format: ORD-{TIMESTAMP}-{RANDOM}
+    // 2. Generate Unique Transaction ID
     const systemTransactionId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    // 3. User Logic (Find or Create)
+    // ============================================================
+    // 3. USER LOGIC (Fixes Duplicate Key Error)
+    // ============================================================
     let userId;
-    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+
+    // Step A: Check if user exists by Email OR Phone
+    const existingUser = await User.findOne({
+      $or: [
+        { email: email }, 
+        { phone: phone }
+      ]
+    });
 
     if (existingUser) {
+      // ✅ USER EXISTS: Use their ID, do NOT create new user
+      console.log(`Using existing user: ${existingUser._id}`);
       userId = existingUser._id;
+
+      // Optional: If they didn't have a phone before, try to add it (safely)
       if (!existingUser.phone && phone) {
-        existingUser.phone = phone;
-        await existingUser.save();
+        try {
+          existingUser.phone = phone;
+          await existingUser.save();
+        } catch (updateErr) {
+          // If update fails (phone taken), ignore it. We have the ID, that's what matters.
+          console.log("Could not update phone on existing user (duplicate).");
+        }
       }
+
     } else {
+      // ✅ USER DOES NOT EXIST: Create New
       const hashedPassword = await bcrypt.hash(email, 10);
+      
       try {
         const newUser = await User.create({
           name,
@@ -45,42 +65,62 @@ export async function POST(req: Request) {
           role: "user"
         });
         userId = newUser._id;
-      } catch (err) {
-        return NextResponse.json({ error: "User creation failed." }, { status: 400 });
+      } catch (err: any) {
+        // 🚨 SAFETY NET: Handle Race Conditions / Hidden Duplicates
+        // If create failed because phone/email actually DID exist (E11000)
+        if (err.code === 11000) {
+          console.log("Duplicate error caught during creation. Recovering existing user...");
+          
+          // Find the user that caused the conflict
+          const conflictUser = await User.findOne({
+            $or: [{ email }, { phone }]
+          });
+          
+          if (conflictUser) {
+            userId = conflictUser._id; // Use the existing ID
+          } else {
+            return NextResponse.json({ error: "User conflict could not be resolved." }, { status: 400 });
+          }
+        } else {
+          return NextResponse.json({ error: "User creation failed." }, { status: 500 });
+        }
       }
     }
 
+    // ============================================================
     // 4. Create Order(s)
-    // Note: RupantorPay usually processes ONE total amount. 
-    // If you have multiple items, you might want to create ONE Order document with an array of products,
-    // OR create multiple orders sharing the same transactionId.
-    // Based on your schema (1 product per order), we create multiple documents.
+    // ============================================================
     
     const orderPromises = cartItems.map(async (item: any) => {
       const dbProduct = await Product.findById(item.productId);
       if (!dbProduct) return null;
 
       return Order.create({
-        user: userId,
+        user: userId, // Guaranteed valid ID from logic above
         product: item.productId,
-        transactionId: systemTransactionId, // Same ID for all items in this cart checkout
+        transactionId: systemTransactionId,
         paymentMethod,
         amount: dbProduct.salePrice * item.quantity, 
+        
+        // Statuses from your updated Model
         status: "pending", 
         paymentStatus: "unpaid", 
+        
         deliveredContent: {}
       });
     });
 
     const createdOrders = await Promise.all(orderPromises);
-    
-    // Return the ID of the first order (or handle bundle logic) for the Payment Gateway
-    // We send back the order ID of the first item to track the group payment
     const primaryOrder = createdOrders.find(o => o !== null);
 
+    if (!primaryOrder) {
+      return NextResponse.json({ error: "Failed to generate order" }, { status: 500 });
+    }
+
+    // Return the Order ID so frontend can initiate payment
     return NextResponse.json({ 
       success: true, 
-      orderId: primaryOrder._id, // Send this to initiate payment
+      orderId: primaryOrder._id, 
       transactionId: systemTransactionId
     });
 
@@ -89,7 +129,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
 // ==============================================================================
 // GET: Fetch Orders (With Security)
 // ==============================================================================
