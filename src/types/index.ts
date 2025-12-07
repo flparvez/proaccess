@@ -95,7 +95,7 @@ export interface IOrder {
   screenshot?: string;
   
   // State
-  status: "pending" | "completed" | "cancelled" | "declined";
+  status: "pending" | "completed" | "cancelled" | "declined" | "processing";
   
   // Delivery (Only present if status is completed)
   deliveredContent?: IDeliveredContent;
