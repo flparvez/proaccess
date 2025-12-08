@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import { ImageKitProvider } from "@imagekit/next";
-import Navbar from "@/components/Navbar";
+
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -36,7 +36,7 @@ export default function RootLayout({
 
         <Providers> 
            <ImageKitProvider urlEndpoint={urlEndpoint}></ImageKitProvider>
-           <Navbar />
+      
         {children}
 <Toaster position="top-right" richColors />
         </Providers>

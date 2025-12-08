@@ -130,38 +130,45 @@ export async function POST(req: Request) {
   }
 }
 // ==============================================================================
-// GET: Fetch Orders (With Security)
+// GET: Fetch Orders (Secure & Role-Based)
 // ==============================================================================
 export async function GET(req: NextRequest) {
   try {
-    // 1. Auth Check
+    // 1. 🔒 AUTH CHECK: Ensure user is logged in
     const session = await getServerSession(authOptions);
        
-    // if (!session || !session.user) {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+    }
 
     await connectToDatabase();
 
-    let query: any = {};
+    // 2. 🟢 FILTERING LOGIC
+    // Default: Restrict query to the logged-in user's ID
+    let query: any = { user: session.user.id };
     
-    // 2. 🟢 Security Logic: Admin vs User
-    // If NOT Admin, restrict query to the logged-in user's ID
-    // if (session.user.role !== "ADMIN") {
-    //   query = { user: session.user.id };
-    // }
+    // Override: If Admin, remove the restriction (Show ALL orders)
+    // Note: Matches 'admin' lowercase from your User model enum
+    if (session.user.role === "ADMIN") {
+      query = {}; 
+    }
 
-    // 3. Fetch Orders
+    // 3. FETCH DATA
     const orders = await Order.find(query)
-      .populate("product", "title thumbnail slug regularPrice salePrice") // Fetch specific product fields
-      .populate("user", "name email phone") // Fetch user details (helpful for Admin)
-      .sort({ createdAt: -1 })
+      // Get Product details for the UI (Image, Title, Price)
+      .populate("product", "title thumbnail slug regularPrice salePrice") 
+      // Get User details (Crucial for Admin to know who bought what)
+      .populate("user", "name email phone image") 
+      .sort({ createdAt: -1 }) // Newest first
       .lean();
 
     return NextResponse.json({ success: true, orders }, { status: 200 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Error fetching orders:", error);
-    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch orders" }, 
+      { status: 500 }
+    );
   }
 }

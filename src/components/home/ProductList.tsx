@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image"; // Next.js Optimized Image
 import { IProduct } from "@/types";
-import { ShoppingCart, ArrowRight } from "lucide-react";
-import { useCart } from "@/lib/CartContext";
+import { ShoppingCart, ArrowRight, Star } from "lucide-react";
+import { useCart } from "@/lib/CartContext"; // Ensure correct path
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 
 const ProductList: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
@@ -29,9 +29,7 @@ const ProductList: React.FC = () => {
           throw new Error(data.error || "Failed to load products");
         }
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "An unexpected error occurred"
-        );
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
@@ -57,7 +55,7 @@ const ProductList: React.FC = () => {
 
   if (loading)
     return (
-      <div className="bg-black min-h-[400px] flex items-center justify-center text-gray-400">
+      <div className="bg-black min-h-[400px] flex items-center justify-center text-gray-500 animate-pulse">
         Loading courses...
       </div>
     );
@@ -65,96 +63,115 @@ const ProductList: React.FC = () => {
   if (error || products.length === 0) return null;
 
   return (
-    <section className="bg-black py-10 text-white">
-      <div className="container mx-auto px-3 md:px-6">
+    <section className="bg-black py-4 md:py-16 text-white">
+      <div className="container mx-auto px-1 md:px-6">
+        
         {/* Header */}
-        <div className="flex items-center justify-between mb-5 md:mb-8">
-          <h2 className="text-xl md:text-3xl font-bold tracking-wide">
-            Popular Courses
-          </h2>
+        <div className="flex items-center justify-between mb-6 md:mb-10">
+          <div className="flex items-center gap-3">
+             <div className="h-8 w-1 bg-green-500 rounded-full"></div>
+             <h2 className="text-xl md:text-3xl font-bold tracking-wide text-white">
+               Popular Courses
+             </h2>
+          </div>
           <Link
             href="/shop"
-            className="hidden md:flex items-center text-sm text-gray-400 hover:text-white transition-colors"
+            className="hidden md:flex items-center text-sm font-medium text-gray-400 hover:text-green-400 transition-colors"
           >
-            View All <ArrowRight className="w-4 h-4 ml-1" />
+            View All <ArrowRight className="w-4 h-4 ml-2" />
           </Link>
         </div>
 
-        {/* Product Grid */}
-        {/* 👉 2 columns on mobile, no gap. Gaps only from md+ */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-0 md:gap-5">
+        {/* Product Grid Configuration:
+           - Mobile: 2 Columns (grid-cols-2) with smaller gap (gap-3)
+           - Tablet: 3 Columns (md:grid-cols-3)
+           - Desktop: 4 Columns (xl:grid-cols-4) with larger gap (gap-6)
+        */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
           {products.map((product) => {
             const regular = product.regularPrice;
             const sale = product.salePrice;
-            const discount =
-              regular > sale
+            const discount = regular > sale
                 ? Math.round(((regular - sale) / regular) * 100)
                 : 0;
 
             return (
               <div
                 key={product._id}
-                className="group relative flex flex-col h-full bg-[#111] border border-black md:border-gray-800 md:rounded-xl overflow-hidden hover:border-gray-600 transition-all duration-300"
+                className="group relative flex flex-col h-full bg-[#111] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all duration-300 hover:shadow-lg hover:shadow-green-900/10"
               >
                 <Link
                   href={`/product/${product.slug}`}
                   className="flex h-full flex-col"
                 >
-                  {/* Image */}
-                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-900">
+                  {/* === IMAGE AREA === */}
+                  {/* aspect-video (16:9) is standard for courses. 
+                      Use 'fill' with 'sizes' for perfect responsiveness */}
+                  <div className="relative aspect-video w-full bg-gray-900 overflow-hidden">
                     <Image
-                      width={500}
-                      height={500}
                       src={product.thumbnail}
                       alt={product.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-110"
                     />
 
-                    {/* Discount */}
+                    {/* Gradient Overlay for text readability if needed */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                    {/* Discount Badge */}
                     {discount > 0 && (
-                      <span className="absolute top-2 left-2 bg-lime-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded">
-                        {discount}% OFF
+                      <span className="absolute top-2 left-2 bg-yellow-500 text-black text-[10px] md:text-xs font-bold px-2 py-0.5 rounded shadow-sm">
+                        -{discount}%
                       </span>
                     )}
 
-                    {/* Running / Featured */}
+                    {/* Hot/Running Badge */}
                     {product.isFeatured && (
-                      <span className="absolute top-2 right-2 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">
+                      <span className="absolute top-2 right-2 bg-green-600 text-white text-[10px] md:text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
                         HOT
                       </span>
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="flex flex-1 flex-col px-2.5 py-3 md:px-4 md:py-4">
+                  {/* === CONTENT AREA === */}
+                  <div className="flex flex-1 flex-col p-3 md:p-5">
+                    
+                    {/* Title */}
                     <h3
-                      className="text-[12px] sm:text-sm md:text-base font-semibold text-gray-100 line-clamp-2 leading-snug mb-1.5 group-hover:text-lime-400 transition-colors"
+                      className="text-sm md:text-base font-bold text-gray-100 line-clamp-2 leading-snug mb-2 group-hover:text-green-400 transition-colors min-h-[2.5rem]"
                       title={product.title}
                     >
                       {product.title}
                     </h3>
 
-                    {/* Price + Cart */}
-                    <div className="mt-auto pt-2 md:pt-3 border-t border-gray-800 flex items-center justify-between">
+                    {/* Rating / Meta (Optional placeholder) */}
+                    <div className="flex items-center gap-1 mb-3">
+                        <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                        <span className="text-xs text-gray-500 font-medium">4.8 (120)</span>
+                    </div>
+
+                    {/* Price + Action Row */}
+                    <div className="mt-auto pt-3 border-t border-gray-800 flex items-center justify-between">
                       <div className="flex flex-col">
                         {regular > sale && (
-                          <span className="text-[10px] sm:text-xs text-gray-500 line-through">
+                          <span className="text-[10px] md:text-xs text-gray-500 line-through font-medium">
                             {formatPrice(regular)}
                           </span>
                         )}
-                        <span className="text-sm sm:text-lg font-extrabold text-white tracking-tight">
+                        <span className="text-sm md:text-lg font-extrabold text-white tracking-tight">
                           {formatPrice(sale)}
                         </span>
                       </div>
 
+                      {/* Cart Button */}
                       <button
                         type="button"
                         onClick={(e) => handleAddToCart(e, product)}
-                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 flex items-center justify-center text-gray-300 hover:bg-white hover:text-black transition-all active:scale-95"
-                        title="Add to Cart"
+                        className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/10 flex items-center justify-center text-gray-300 hover:bg-white hover:text-black transition-all active:scale-90"
+                        aria-label="Add to Cart"
                       >
-                        <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
                       </button>
                     </div>
                   </div>
@@ -165,13 +182,13 @@ const ProductList: React.FC = () => {
         </div>
 
         {/* Mobile View All Button */}
-        <div className="mt-6 flex justify-center md:hidden">
-          <Link href="/shop">
+        <div className="mt-8 flex justify-center md:hidden">
+          <Link href="/shop" className="w-full">
             <Button
               variant="outline"
-              className="border-gray-700 text-white hover:bg-gray-800 bg-transparent text-sm px-6"
+              className="w-full border-gray-800 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent h-12 text-sm font-medium rounded-lg"
             >
-              View All Courses
+              Browse All Courses <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
         </div>

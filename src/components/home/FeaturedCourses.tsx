@@ -1,7 +1,9 @@
 "use client";
 
+import * as React from "react"; // Added for useRef (optional but good practice)
 import Image from "next/image";
 import Link from "next/link";
+import Autoplay from "embla-carousel-autoplay"; // 1. Import Autoplay
 import { 
   Carousel, 
   CarouselContent, 
@@ -16,11 +18,16 @@ import { ArrowRight, TrendingUp } from "lucide-react";
 
 export default function FeaturedCourses({ products }: { products: IProduct[] }) {
   
+  // 2. Configure Autoplay Plugin
+  const plugin = React.useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: true })
+  );
+
   if (!products || products.length === 0) return null;
 
   return (
-    <section className="py-16 bg-[#0a0a0a] text-white">
-      <div className="container mx-auto px-4 md:px-6">
+    <section className="py-8 bg-[#0a0a0a] text-white">
+      <div className="container mx-auto px-1 md:px-6">
         
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
@@ -31,8 +38,13 @@ export default function FeaturedCourses({ products }: { products: IProduct[] }) 
         </div>
 
         {/* Carousel Container */}
-        <div className="relative">
+        <div 
+          className="relative"
+          onMouseEnter={plugin.current.stop} // Optional: Stop on hover
+          onMouseLeave={plugin.current.reset} // Optional: Resume on leave
+        >
           <Carousel
+            plugins={[plugin.current]} // 3. Add Plugin Here
             opts={{
               align: "start",
               loop: true,

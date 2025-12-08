@@ -1,4 +1,4 @@
-import UserDashboard from '@/components/Dashboard'
+import UserDashboard from '@/components/dashboard/UserDashboard'
 import React from 'react'
 
 const page = () => {
