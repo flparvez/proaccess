@@ -25,7 +25,7 @@ export default function AdminLayout({
             <h1 className="font-semibold text-lg hidden md:block">Dashboard Control</h1>
           </div>
           
-          <UserNav /> {/* Avatar & Logout Dropdown */}
+          <UserNav /> 
         </header>
 
         {/* Page Content */}

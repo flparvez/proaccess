@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -24,11 +23,12 @@ export async function POST(req: Request) {
     const systemTransactionId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     // ============================================================
-    // 3. USER LOGIC (Fixes Duplicate Key Error)
+    // 3. USER LOGIC (With Auto-Login Flag)
     // ============================================================
     let userId;
+    let isNewUser = false; // Flag to track if we should auto-login
 
-    // Step A: Check if user exists by Email OR Phone
+    // Check if user exists by Email OR Phone
     const existingUser = await User.findOne({
       $or: [
         { email: email }, 
@@ -37,24 +37,21 @@ export async function POST(req: Request) {
     });
 
     if (existingUser) {
-      // ✅ USER EXISTS: Use their ID, do NOT create new user
-      console.log(`Using existing user: ${existingUser._id}`);
+      // ✅ USER EXISTS: Use their ID
       userId = existingUser._id;
+      isNewUser = false; // Existing users must login manually for security
 
-      // Optional: If they didn't have a phone before, try to add it (safely)
+      // Update phone if missing
       if (!existingUser.phone && phone) {
         try {
           existingUser.phone = phone;
           await existingUser.save();
-        } catch (updateErr) {
-          // If update fails (phone taken), ignore it. We have the ID, that's what matters.
-          console.log("Could not update phone on existing user (duplicate).");
-        }
+        } catch (e) { /* Ignore duplicate error */ }
       }
 
     } else {
       // ✅ USER DOES NOT EXIST: Create New
-      const hashedPassword = await bcrypt.hash(email, 10);
+      const hashedPassword = await bcrypt.hash(email, 10); // Password = Email
       
       try {
         const newUser = await User.create({
@@ -65,22 +62,13 @@ export async function POST(req: Request) {
           role: "user"
         });
         userId = newUser._id;
+        isNewUser = true; // ✅ Mark for auto-login
       } catch (err: any) {
-        // 🚨 SAFETY NET: Handle Race Conditions / Hidden Duplicates
-        // If create failed because phone/email actually DID exist (E11000)
+        // Recover from race condition
         if (err.code === 11000) {
-          console.log("Duplicate error caught during creation. Recovering existing user...");
-          
-          // Find the user that caused the conflict
-          const conflictUser = await User.findOne({
-            $or: [{ email }, { phone }]
-          });
-          
-          if (conflictUser) {
-            userId = conflictUser._id; // Use the existing ID
-          } else {
-            return NextResponse.json({ error: "User conflict could not be resolved." }, { status: 400 });
-          }
+          const conflictUser = await User.findOne({ $or: [{ email }, { phone }] });
+          if (conflictUser) userId = conflictUser._id;
+          else return NextResponse.json({ error: "User conflict." }, { status: 400 });
         } else {
           return NextResponse.json({ error: "User creation failed." }, { status: 500 });
         }
@@ -96,16 +84,13 @@ export async function POST(req: Request) {
       if (!dbProduct) return null;
 
       return Order.create({
-        user: userId, // Guaranteed valid ID from logic above
+        user: userId,
         product: item.productId,
         transactionId: systemTransactionId,
         paymentMethod,
         amount: dbProduct.salePrice * item.quantity, 
-        
-        // Statuses from your updated Model
         status: "pending", 
         paymentStatus: "unpaid", 
-        
         deliveredContent: {}
       });
     });
@@ -117,11 +102,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Failed to generate order" }, { status: 500 });
     }
 
-    // Return the Order ID so frontend can initiate payment
     return NextResponse.json({ 
       success: true, 
       orderId: primaryOrder._id, 
-      transactionId: systemTransactionId
+      transactionId: systemTransactionId,
+      isNewUser: isNewUser // ✅ Send this flag to frontend
     });
 
   } catch (error: any) {
@@ -129,6 +114,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
 // ==============================================================================
 // GET: Fetch Orders (Secure & Role-Based)
 // ==============================================================================
@@ -137,7 +124,7 @@ export async function GET(req: NextRequest) {
     // 1. 🔒 AUTH CHECK: Ensure user is logged in
     const session = await getServerSession(authOptions);
        
-    if (!session || !session.user) {
+    if (!session ) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 

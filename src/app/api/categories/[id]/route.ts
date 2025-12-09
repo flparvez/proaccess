@@ -33,7 +33,7 @@ export async function PUT(req: NextRequest, { params }: IdParams) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== "admin") {
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Admins only" }, { status: 403 });
     }
 
@@ -78,7 +78,7 @@ export async function DELETE(req: NextRequest, { params }: IdParams) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== "admin") {
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Admins only" }, { status: 403 });
     }
 

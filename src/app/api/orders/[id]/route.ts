@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, { params }: IdParams) {
     // 🟢 Security: Ensure user owns this order (or is admin)
     // We cast to string to ensure safe comparison
     const isOwner = order.user._id.toString() === session.user.id;
-    const isAdmin = session.user.role === "admin";
+    const isAdmin = session.user.role === "ADMIN";
 
     // if (!isOwner && !isAdmin) {
     //   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest, { params }: IdParams) {
     const session = await getServerSession(authOptions);
     
     // 1. 🔒 Strict Admin Check
-    // if (!session || session.user.role !== "admin") {
+    // if (!session || session.user.role !== "ADMIN") {
     //   return NextResponse.json({ error: "Admins only" }, { status: 403 });
     // }
 

@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession(authOptions);
 
     // 1. Security Check
-    // if (!session || session.user.role !== "admin") {
+    // if (!session || session.user.role !== "ADMIN") {
     //   return NextResponse.json({ error: "Admins only" }, { status: 403 });
     // }
 

@@ -1,36 +1,49 @@
+import { OrdersClient } from "@/components/admin/orders/OrdersClient";
+import { SITE_URL } from "@/types"; // Ensure this is defined, or use process.env
 
-import { OrdersClient } from "@/components/admin/orders/OrdersClient"; // We build this next
-import { columns } from "@/components/admin/orders/columns"; // We build this next
-import { SITE_URL } from "@/types";
 
 
 export default async function OrdersPage() {
 
-  // Fetch all orders with User details
-  // Convert to plain object (lean) + stringify ObjectIds for Client Component
-const res = await fetch(`${SITE_URL}/api/orders`, {
-    cache: 'no-store', // Ensure fresh data on each request
+  // 1. Fetch Orders
+  // We use 'no-store' so the Admin always sees the latest orders immediately
+  const res = await fetch(`${SITE_URL}/api/orders`, {
+    cache: "no-store", 
   });
-  const orders = await res.json();
 
-  // Fix MongoDB ObjectId serialization issue for Client Components
-  const formattedOrders = orders?.orders?.map((order: any) => ({
-    ...order,
-    _id: order._id.toString(),
-    user: { ...order.user, _id: order.user._id.toString() },
-    product: { ...order.product, _id: order.product._id.toString() },
-    createdAt: order.createdAt,
-  }));
 
+  if (!res.ok) {
+    return (
+      <div className="flex items-center justify-center h-full w-full p-8 text-red-500 bg-black">
+        <p>Failed to load orders. Please check your connection.</p>
+      </div>
+    );
+  }
+
+  // 2. Parse Data
+  // The API returns { success: true, orders: [...] }
+  const data = await res.json();
+  const orders = data.orders || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Order Management</h2>
+    // Responsive Container: 
+    // - flex-col flex-1: Fills height
+    // - w-full max-w-full: Prevents horizontal scroll
+    // - bg-black text-white: Dark theme
+    <div className="flex flex-col flex-1 w-full max-w-full gap-4 p-4 md:p-6 bg-black text-white">
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Order Management</h2>
+          <p className="text-sm text-gray-400">View transactions and verify payments</p>
+        </div>
       </div>
       
-      {/* The Interactive Table Component */}
-      <OrdersClient data={formattedOrders} />
+      {/* Table Wrapper */}
+      <div className="flex-1 w-full overflow-hidden">
+        <OrdersClient data={orders} />
+      </div>
     </div>
   );
 }
