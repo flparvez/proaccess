@@ -57,7 +57,7 @@ export interface IProduct {
   
   // Relations & Meta
   // On frontend, this could be the full Object (if populated) or just the ID string
-  category: ICategory | string; 
+  category: ICategory ; 
   
   tags: string[];
   isAvailable: boolean;

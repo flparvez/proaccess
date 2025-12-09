@@ -12,6 +12,7 @@ import {
   Loader2 
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SITE_URL } from "@/types";
 
 // Types matching your API response
 interface DashboardStats {
@@ -30,7 +31,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch("/api/admin/stats",{
+        const res = await fetch(`${SITE_URL}/api/admin/stats`,{
           cache:"force-cache", next: {
             revalidate: 60
           }

@@ -9,34 +9,12 @@ import { useCart } from "@/lib/CartContext"; // Ensure correct path
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-const ProductList: React.FC = () => {
-  const [products, setProducts] = useState<IProduct[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+const ProductList = ({products}: {products: IProduct[]}) => {
 
+ 
   const { addToCart, mapProductToCartItem } = useCart();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch("/api/products", { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to fetch products");
 
-        const data = await res.json();
-        if (data.success) {
-          setProducts(data.products);
-        } else {
-          throw new Error(data.error || "Failed to load products");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
 
   const handleAddToCart = (e: React.MouseEvent, product: IProduct) => {
     e.preventDefault();
@@ -53,34 +31,11 @@ const ProductList: React.FC = () => {
       minimumFractionDigits: 0,
     }).format(price);
 
-  if (loading)
-    return (
-      <div className="bg-black min-h-[400px] flex items-center justify-center text-gray-500 animate-pulse">
-        Loading courses...
-      </div>
-    );
-
-  if (error || products.length === 0) return null;
-
+  
   return (
     <section className="bg-black py-4 md:py-16 text-white">
       <div className="container mx-auto px-1 md:px-6">
         
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6 md:mb-10">
-          <div className="flex items-center gap-3">
-             <div className="h-8 w-1 bg-green-500 rounded-full"></div>
-             <h2 className="text-xl md:text-3xl font-bold tracking-wide text-white">
-               Popular Courses
-             </h2>
-          </div>
-          <Link
-            href="/shop"
-            className="hidden md:flex items-center text-sm font-medium text-gray-400 hover:text-green-400 transition-colors"
-          >
-            View All <ArrowRight className="w-4 h-4 ml-2" />
-          </Link>
-        </div>
 
         {/* Product Grid Configuration:
            - Mobile: 2 Columns (grid-cols-2) with smaller gap (gap-3)
