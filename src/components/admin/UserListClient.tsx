@@ -56,7 +56,10 @@ export default function UserListClient() {
   // 1. Fetch Users
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/admin/users");
+      const res = await fetch("/api/admin/users",{
+        cache:"force-cache",
+        next:{revalidate:60}
+      });
       const data = await res.json();
       if (data.success) {
         setUsers(data.users);

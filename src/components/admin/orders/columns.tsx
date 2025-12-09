@@ -3,16 +3,16 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Copy } from "lucide-react";
-import { OrderActionModal } from "./OrderActionModal"; // The modal we created earlier
-import { toast } from "sonner"; // Optional: For copy toast
+import { ArrowUpDown, Copy, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { OrderActionModal } from "./OrderActionModal"; // Ensure this path is correct
+import { toast } from "sonner";
 
 // This type must match the data shape we created in page.tsx
 export type OrderColumn = {
   _id: string;
   transactionId: string;
   amount: number;
-  status: "pending" | "completed" | "declined" | "cancelled";
+  status: "pending" | "completed" | "declined" | "cancelled" | "processing";
   createdAt: string;
   user: {
     name: string;
@@ -35,17 +35,19 @@ export const columns: ColumnDef<OrderColumn>[] = [
       const id = row.getValue("transactionId") as string;
       return (
         <div className="flex items-center gap-2">
-          <span className="font-mono font-medium text-blue-600">{id}</span>
+          <span className="font-mono text-xs font-medium text-white bg-[#1a1a1a] px-2 py-1 rounded border border-gray-800">
+            {id}
+          </span>
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
+            className="h-6 w-6 text-gray-500 hover:text-white hover:bg-white/10"
             onClick={() => {
               navigator.clipboard.writeText(id);
               toast.success("Copied Transaction ID");
             }}
           >
-            <Copy className="h-3 w-3 text-muted-foreground" />
+            <Copy className="h-3 w-3" />
           </Button>
         </div>
       );
@@ -60,8 +62,8 @@ export const columns: ColumnDef<OrderColumn>[] = [
       const user = row.original.user;
       return (
         <div className="flex flex-col">
-          <span className="font-medium text-sm">{user.name}</span>
-          <span className="text-xs text-muted-foreground">{user.email}</span>
+          <span className="font-medium text-sm text-gray-200">{user.name}</span>
+          <span className="text-xs text-gray-500">{user.email}</span>
         </div>
       );
     },
@@ -72,7 +74,7 @@ export const columns: ColumnDef<OrderColumn>[] = [
     accessorKey: "product.title",
     header: "Product",
     cell: ({ row }) => (
-      <span className="font-medium truncate max-w-[200px] block" title={row.original.product.title}>
+      <span className="font-medium text-gray-300 truncate max-w-[180px] block" title={row.original.product.title}>
         {row.original.product.title}
       </span>
     ),
@@ -86,6 +88,7 @@ export const columns: ColumnDef<OrderColumn>[] = [
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="text-gray-400 hover:text-white hover:bg-transparent pl-0"
         >
           Amount
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -98,12 +101,13 @@ export const columns: ColumnDef<OrderColumn>[] = [
       const formatted = new Intl.NumberFormat("en-BD", {
         style: "currency",
         currency: "BDT",
+        minimumFractionDigits: 0,
       }).format(amount);
-      return <div className="font-bold text-green-700">{formatted}</div>;
+      return <div className="font-bold text-green-500">{formatted}</div>;
     },
   },
 
-  // 5. Status Column (Styled Badges)
+  // 5. Status Column (Styled Badges for Dark Mode)
   {
     accessorKey: "status",
     header: "Status",
@@ -111,17 +115,26 @@ export const columns: ColumnDef<OrderColumn>[] = [
       const status = row.getValue("status") as string;
       
       const styles: Record<string, string> = {
-        pending: "bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100",
-        completed: "bg-green-100 text-green-800 border-green-200 hover:bg-green-100",
-        declined: "bg-red-100 text-red-800 border-red-200 hover:bg-red-100",
+        pending: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20",
+        processing: "bg-blue-400/10 text-blue-400 border-blue-400/20",
+        completed: "bg-green-400/10 text-green-400 border-green-400/20",
+        declined: "bg-red-400/10 text-red-400 border-red-400/20",
+        cancelled: "bg-gray-400/10 text-gray-400 border-gray-400/20",
+      };
+
+      const icons: Record<string, React.ReactNode> = {
+        pending: <Clock className="w-3 h-3 mr-1" />,
+        processing: <Clock className="w-3 h-3 mr-1" />,
+        completed: <CheckCircle2 className="w-3 h-3 mr-1" />,
+        declined: <XCircle className="w-3 h-3 mr-1" />,
       };
 
       return (
         <Badge 
-          className={styles[status] || "bg-gray-100 text-gray-800"} 
+          className={`${styles[status] || "bg-gray-800 text-gray-400"} border px-2 py-0.5 text-[10px] uppercase font-bold`} 
           variant="outline"
         >
-          {status.toUpperCase()}
+          {icons[status]} {status}
         </Badge>
       );
     },
@@ -130,10 +143,14 @@ export const columns: ColumnDef<OrderColumn>[] = [
   // 6. Actions Column (The Modal Trigger)
   {
     id: "actions",
-    header: "Action",
+    header: () => <div className="text-right">Action</div>,
     cell: ({ row }) => {
       const order = row.original;
-      return <OrderActionModal order={order} />;
+      return (
+        <div className="flex justify-end">
+          <OrderActionModal order={order} />
+        </div>
+      );
     },
   },
 ];

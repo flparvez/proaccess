@@ -20,7 +20,7 @@ const NavItems = () => (
       <CreditCard className="mr-3 h-4 w-4" /> Payment History
     </Button>
     <Button variant="ghost" className="w-full justify-start text-gray-400 hover:bg-gray-800 hover:text-white">
-      <User className="mr-3 h-4 w-4" /> Profile
+      <User className="mr-3 h-4 w-4" /> <Link href="/dashboard/profile">Profile Settings</Link>
     </Button>
   </nav>
 );

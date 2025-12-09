@@ -76,7 +76,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const initData = async () => {
       try {
-        const catRes = await fetch("/api/categories");
+        const catRes = await fetch("/api/categories",{
+          cache:"force-cache",next : {
+            revalidate: 60
+          }
+        });
         const catData = await catRes.json();
         setCategories(catData.categories || []);
 

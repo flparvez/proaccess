@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card"; 
+import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Search, Trash2 } from "lucide-react";
 import { columns, OrderColumn } from "./columns";
 import { toast } from "sonner";
@@ -33,7 +33,7 @@ interface OrdersClientProps {
 
 export function OrdersClient({ data }: OrdersClientProps) {
   const router = useRouter();
-  
+
   const [orders, setOrders] = React.useState<OrderColumn[]>(data);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -62,7 +62,7 @@ export function OrdersClient({ data }: OrdersClientProps) {
   };
 
   const table = useReactTable({
-    data: orders, 
+    data: orders,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -81,7 +81,7 @@ export function OrdersClient({ data }: OrdersClientProps) {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 px-0"> {/* ✅ PX-0 ensures it fits full width */}
       
       {/* --- HEADER --- */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#111] p-4 rounded-xl border border-gray-800">
@@ -103,11 +103,11 @@ export function OrdersClient({ data }: OrdersClientProps) {
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="border-gray-800 hover:bg-[#111]">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-gray-400 font-medium">
+                  <TableHead key={header.id} className="text-gray-400 font-medium text-white">
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
-                <TableHead className="text-right text-gray-400">Actions</TableHead>
+                <TableHead className="text-right text-white font-medium">Actions</TableHead>
               </TableRow>
             ))}
           </TableHeader>
@@ -121,15 +121,15 @@ export function OrdersClient({ data }: OrdersClientProps) {
                     </TableCell>
                   ))}
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleDelete(row.original._id)}
                       disabled={loadingId === row.original._id}
                       className="text-red-500 hover:bg-red-900/20 hover:text-red-400"
                     >
                       {loadingId === row.original._id ? (
-                        <span className="animate-spin text-xs">...</span> 
+                        <span className="animate-spin text-xs">...</span>
                       ) : (
                         <Trash2 className="h-4 w-4" />
                       )}
@@ -157,11 +157,11 @@ export function OrdersClient({ data }: OrdersClientProps) {
                 
                 {/* Header: ID + Status */}
                 <div className="flex justify-between items-start border-b border-gray-800 pb-3">
-                  <div>
+                  <div className="min-w-0 pr-2"> {/* Prevents overflow */}
                     <p className="font-mono text-xs text-gray-500">ID: #{row.original.transactionId.slice(-8)}</p>
                     <h3 className="font-bold text-white mt-1 truncate max-w-[200px]">{row.original.product.title}</h3>
                   </div>
-                  <div className="scale-90 origin-top-right">
+                  <div className="scale-90 origin-top-right shrink-0">
                     {flexRender(row.getVisibleCells().find(c => c.column.id === 'status')?.column.columnDef.cell, row.getVisibleCells().find(c => c.column.id === 'status')?.getContext() as any)}
                   </div>
                 </div>
@@ -169,25 +169,26 @@ export function OrdersClient({ data }: OrdersClientProps) {
                 {/* Details Grid */}
                 <div className="grid grid-cols-2 gap-y-2 text-sm">
                   <div>
-                    <span className="text-gray-500 block text-xs">Customer</span>
-                    <span className="font-medium text-gray-300">{row.original.user.name}</span>
+                    <span className="text-gray-500 block text-xs uppercase tracking-wider">Customer</span>
+                    <span className="font-medium text-white">{row.original.user.name}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-gray-500 block text-xs">Amount</span>
+                    <span className="text-gray-500 block text-xs uppercase tracking-wider">Amount</span>
                     <span className="font-bold text-green-500">৳{row.original.amount}</span>
                   </div>
                 </div>
 
                 {/* Actions Footer */}
                 <div className="flex gap-3 pt-3 border-t border-gray-800">
-                  <div className="flex-1">
-                     {/* Renders the "Verify/Details" Button from Columns */}
+                  <div className="flex-1 text-white [&_button]:text-white">
+                     {/* Renders the "Verify/Details" Button from Columns. 
+                         Ensure your column definition uses neutral or white text buttons */}
                      {flexRender(row.getVisibleCells().find(c => c.column.id === 'actions')?.column.columnDef.cell, row.getVisibleCells().find(c => c.column.id === 'actions')?.getContext() as any)}
                   </div>
                   
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
+                  <Button
+                    variant="outline"
+                    size="icon"
                     onClick={() => handleDelete(row.original._id)}
                     disabled={loadingId === row.original._id}
                     className="border-red-900/30 text-red-500 hover:bg-red-900/20 bg-transparent shrink-0"
@@ -206,11 +207,11 @@ export function OrdersClient({ data }: OrdersClientProps) {
       </div>
 
       {/* --- PAGINATION --- */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-gray-500">
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-3 py-4">
+        <div className="text-sm text-gray-500">
           Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
         </div>
-        <div className="space-x-2">
+        <div className="flex gap-2">
           <Button
             variant="outline"
             size="sm"

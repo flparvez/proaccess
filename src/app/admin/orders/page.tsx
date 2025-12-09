@@ -7,7 +7,7 @@ export default async function OrdersPage() {
 
   // 1. Fetch Orders
   // We use 'no-store' so the Admin always sees the latest orders immediately
-  const res = await fetch(`${SITE_URL}/api/orders`, {
+  const res = await fetch(`${SITE_URL}/api/admin/orders`, {
     cache: "no-store", 
   });
 

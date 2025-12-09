@@ -9,14 +9,10 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        // We label it "Email or Phone", but the key is still 'email' 
-        // because NextAuth's default sign-in form uses 'email' by convention.
-        // Your frontend sends { email: formData.identifier } so this receives the input.
         email: { label: "Email or Phone", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // 1. Basic Validation
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Missing email/phone or password");
         }
@@ -24,20 +20,17 @@ export const authOptions: NextAuthOptions = {
         try {
           await connectToDatabase();
 
-          // 2. 🟢 SEARCH LOGIC: Check both Email AND Phone fields
-          // 'credentials.email' holds the input string (e.g., "017..." or "john@...")
           const user = await User.findOne({
             $or: [
               { email: credentials.email }, 
               { phone: credentials.email }
             ]
-          }).select("+password"); // Vital: Get password for comparison
+          }).select("+password");
 
           if (!user) {
             throw new Error("No user found with this email or phone");
           }
 
-          // 3. Verify Password
           const isValid = await bcrypt.compare(
             credentials.password,
             user.password
@@ -48,12 +41,14 @@ export const authOptions: NextAuthOptions = {
           }
 
           // 4. Return User Data (Stored in Session)
+          // ✅ Added phone here
           return {
             id: user._id.toString(),
             email: user.email,
             name: user.name,
             role: user.role || "user",
-            image: user.image
+            image: user.image,
+            phone: user.phone || null, 
           };
         } catch (error) {
           console.error("Auth error: ", error);
@@ -67,6 +62,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.phone = user.phone; // ✅ Save phone to token
       }
       return token;
     },
@@ -74,6 +70,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.phone = token.phone as string | undefined; // ✅ Expose phone in session
       }
       return session;
     },
