@@ -1,3 +1,5 @@
+import { IVariant } from "@/models/Product";
+
 export interface IdParams {
   params: Promise<{ id: string }>;
 }
@@ -49,7 +51,7 @@ export interface IProduct {
   // Media
   thumbnail: string;
   gallery: string[];
-  
+  variants?: IVariant[];
   // Content
   description: string;
   shortDescription?: string;

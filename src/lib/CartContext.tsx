@@ -1,6 +1,6 @@
 "use client";
 
-import { IProduct } from "@/types"; // Use your main type
+import { IProduct } from "@/types"; // Ensure IProduct includes the new variants interface
 import React, {
   createContext,
   useContext,
@@ -10,28 +10,37 @@ import React, {
   ReactNode,
 } from "react";
 
-// --- Cart Specific Types ---
+// 1. Define the Variant shape for the Cart
+export interface ICartVariant {
+  name: string;      // e.g. "Silver"
+  validity: string;  // e.g. "30 Days"
+  price: number;     // e.g. 500
+}
+
+// 2. Updated Cart Item Interface
 export interface CartItem {
+  cartId: string; // ⚡ Unique ID (productId + variantName) to distinguish items
   productId: string;
   name: string;
   image: string;
-  price: number;
-  regularPrice?: number; // For showing discounts in cart
+  price: number; // This will store either SalePrice or VariantPrice
+  regularPrice?: number;
   quantity: number;
   category?: string;
-  // Simplified for now - add variants back if your schema supports them
-  selectedVariants?: Record<string, string>; 
+  
+  // ✅ Variant Support
+  variant?: ICartVariant; 
 }
 
 interface CartContextType {
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeFromCart: (cartId: string) => void; // Remove by cartId, not productId
+  updateQuantity: (cartId: string, quantity: number) => void;
   clearCart: () => void;
   
-  // Helper to convert DB Product -> Cart Item
-  mapProductToCartItem: (product: IProduct, qty?: number) => CartItem;
+  // Updated Helper: Accepts optional variant
+  mapProductToCartItem: (product: IProduct, qty?: number, variant?: ICartVariant) => CartItem;
   
   totalAmount: number;
   totalItems: number;
@@ -39,13 +48,13 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
-const CART_KEY = "proaccess-cart-v1"; // Unique key
+const CART_KEY = "eduaccess-cart-v2"; // Changed key version to reset old carts
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // 1. Load from LocalStorage (Client Side Only)
+  // --- Load Cart ---
   useEffect(() => {
     const stored = localStorage.getItem(CART_KEY);
     if (stored) {
@@ -59,7 +68,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setIsInitialized(true);
   }, []);
 
-  // 2. Save to LocalStorage
+  // --- Save Cart ---
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem(CART_KEY, JSON.stringify(cart));
@@ -70,28 +79,31 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addToCart = useCallback((newItem: CartItem) => {
     setCart((prev) => {
-      const existing = prev.find((item) => item.productId === newItem.productId);
+      // Check if this exact product+variant combo exists
+      const existing = prev.find((item) => item.cartId === newItem.cartId);
+      
       if (existing) {
-        // Increment quantity if exists
+        // Increment quantity
         return prev.map((item) =>
-          item.productId === newItem.productId
+          item.cartId === newItem.cartId
             ? { ...item, quantity: item.quantity + newItem.quantity }
             : item
         );
       }
+      // Add new item
       return [...prev, newItem];
     });
   }, []);
 
-  const removeFromCart = useCallback((productId: string) => {
-    setCart((prev) => prev.filter((item) => item.productId !== productId));
+  const removeFromCart = useCallback((cartId: string) => {
+    setCart((prev) => prev.filter((item) => item.cartId !== cartId));
   }, []);
 
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  const updateQuantity = useCallback((cartId: string, quantity: number) => {
     setCart((prev) =>
       prev.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity: Math.max(1, quantity) } // Prevent 0
+        item.cartId === cartId
+          ? { ...item, quantity: Math.max(1, quantity) }
           : item
       )
     );
@@ -99,20 +111,41 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const clearCart = useCallback(() => setCart([]), []);
 
-  // --- Helper: Map DB Product to Cart Item ---
-  const mapProductToCartItem = useCallback((product: IProduct, quantity = 1): CartItem => {
-    return {
-      productId: product._id,
-      name: product.title,
-      image: product.thumbnail,
-      price: product.salePrice, // Always use Sale Price
-      regularPrice: product.regularPrice,
-      quantity,
-      category: typeof product.category === 'object' ? product.category.name : "Product"
-    };
-  }, []);
+  // --- ⚡ CRITICAL: Map Product -> Cart Item Logic ---
+  const mapProductToCartItem = useCallback(
+    (product: IProduct, quantity = 1, selectedVariant?: ICartVariant): CartItem => {
+      
+      // 1. Determine Price: Variant Price OR Product Sale Price
+      const finalPrice = selectedVariant ? selectedVariant.price : product.salePrice;
 
-  // --- Derived State ---
+      // 2. Generate Unique Cart ID
+      // If variant exists: "prod123-Silver"
+      // If no variant: "prod123-default"
+      const uniqueCartId = selectedVariant 
+        ? `${product._id}-${selectedVariant.name}` 
+        : `${product._id}-default`;
+
+      return {
+        cartId: uniqueCartId,
+        productId: String(product._id),
+        name: product.title,
+        image: product.thumbnail,
+        
+        // Price Logic Applied Here
+        price: finalPrice, 
+        regularPrice: product.regularPrice,
+        
+        quantity,
+        category: typeof product.category === 'object' ? (product.category as any).name : "Product",
+        
+        // Store the variant details if selected
+        variant: selectedVariant,
+      };
+    },
+    []
+  );
+
+  // --- Calculations ---
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 

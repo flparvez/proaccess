@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // ==================================================================
 // GET → Fetch All Products 
-// (SECURE: 'accessLink' is automatically hidden by Model Schema)
+// (SECURE: 'accessLink' & 'accessNote' are automatically hidden by Model)
 // ==================================================================
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +16,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const categorySlug = searchParams.get("category");
     const isFeatured = searchParams.get("featured");
- await Category.find();
+    
+    // Ensure Category model is loaded
+    await Category.find();
+    
     let query: any = { isAvailable: true };
 
     // 1. Filter by Category
@@ -32,8 +35,7 @@ export async function GET(req: NextRequest) {
       query.isFeatured = true;
     }
 
-    // 3. Fetch Data
-
+    // 3. Fetch Data (Variants will be included automatically)
     const products = await Product.find(query)
       .populate("category", "name slug") 
       .sort({ createdAt: -1 })
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    // ✅ Uncomment this for production to protect the route
+    // ✅ Protected Route
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Admins only" }, { status: 403 });
     }
@@ -76,7 +78,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Create Product
-    // We explicitly map fields to ensure secure data (accessLink) is saved
     const newProduct = await Product.create({
       title: body.title,
       slug: slug,
@@ -93,14 +94,16 @@ export async function POST(req: NextRequest) {
       tags: body.tags || [],
       features: body.features || [],
       
+      // ⚡ NEW: Save Variants (Silver, Gold, Platinum)
+      variants: body.variants || [],
+      
       isAvailable: body.isAvailable ?? true,
       isFeatured: body.isFeatured ?? false,
       fileType: body.fileType || "Credentials",
       
       salesCount: 0,
 
-      // 🔒 SECURE DATA SAVING
-      // Even though 'select: false' is in schema, we can WRITE to it here.
+      // 🔒 SECURE DATA SAVING (Hidden from public API)
       accessLink: body.accessLink || "", 
       accessNote: body.accessNote || ""
     });

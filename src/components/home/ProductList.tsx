@@ -1,27 +1,57 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import Image from "next/image"; // Next.js Optimized Image
+import Image from "next/image";
 import { IProduct } from "@/types";
-import { ShoppingCart, ArrowRight, Star } from "lucide-react";
-import { useCart } from "@/lib/CartContext"; // Ensure correct path
+import { ShoppingCart, Star, Check, Zap, ArrowRight } from "lucide-react";
+import { useCart } from "@/lib/CartContext"; 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
-const ProductList = ({products}: {products: IProduct[]}) => {
-
- 
+// ----------------------------------------------------------------------
+// 1. SUB-COMPONENT: Individual Product Card (Handles its own state)
+// ----------------------------------------------------------------------
+const ProductCard = ({ product }: { product: IProduct }) => {
   const { addToCart, mapProductToCartItem } = useCart();
+  
+  // ⚡ State: Default to the first variant if available
+  const hasVariants = product.variants && product.variants.length > 0;
+  const [selectedVariantIdx, setSelectedVariantIdx] = useState<number>(0);
 
+  // ⚡ Derived Data: Current Price & Details
+  const currentVariant = hasVariants ? product.variants![selectedVariantIdx] : null;
+  
+  const displayPrice = currentVariant ? currentVariant.price : product.salePrice;
+  const regularPrice = product.regularPrice; // Base regular price (or you could add regular price to variants too)
+  
+  // Discount Calculation
+  const discount = regularPrice > displayPrice
+    ? Math.round(((regularPrice - displayPrice) / regularPrice) * 100)
+    : 0;
 
-
-  const handleAddToCart = (e: React.MouseEvent, product: IProduct) => {
-    e.preventDefault();
+  // Handler: Add To Cart
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault(); // Stop navigation to detail page
     e.stopPropagation();
-    const cartItem = mapProductToCartItem(product, 1);
+
+    // ⚡ Map with specific variant
+    const cartItem = mapProductToCartItem(
+      product, 
+      1, 
+      currentVariant || undefined // Pass the variant object if it exists
+    );
+    
     addToCart(cartItem);
-    toast.success("Added to cart!");
+    toast.success(`Added ${currentVariant ? currentVariant.name : product.title} to cart`);
   };
 
   const formatPrice = (price: number) =>
@@ -31,117 +61,160 @@ const ProductList = ({products}: {products: IProduct[]}) => {
       minimumFractionDigits: 0,
     }).format(price);
 
-  
   return (
-    <section className="bg-black py-4 md:py-16 text-white">
-      <div className="container mx-auto px-1 md:px-6">
+    <div className="group relative flex flex-col h-full bg-[#0f0f11] border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-900/10">
+      
+      {/* Link to Details */}
+      <Link href={`/product/${product.slug}`} className="flex-1 flex flex-col">
         
+        {/* === IMAGE AREA === */}
+        <div className="relative aspect-video w-full bg-gray-900 overflow-hidden">
+          <Image
+            src={product.thumbnail}
+            alt={product.title}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
+          />
 
-        {/* Product Grid Configuration:
-           - Mobile: 2 Columns (grid-cols-2) with smaller gap (gap-3)
-           - Tablet: 3 Columns (md:grid-cols-3)
-           - Desktop: 4 Columns (xl:grid-cols-4) with larger gap (gap-6)
-        */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
-          {products.map((product) => {
-            const regular = product.regularPrice;
-            const sale = product.salePrice;
-            const discount = regular > sale
-                ? Math.round(((regular - sale) / regular) * 100)
-                : 0;
+          {/* Dark Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f11] via-transparent to-transparent opacity-80" />
 
-            return (
-              <div
-                key={product._id}
-                className="group relative flex flex-col h-full bg-[#111] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all duration-300 hover:shadow-lg hover:shadow-green-900/10"
-              >
-                <Link
-                  href={`/product/${product.slug}`}
-                  className="flex h-full flex-col"
-                >
-                  {/* === IMAGE AREA === */}
-                  {/* aspect-video (16:9) is standard for courses. 
-                      Use 'fill' with 'sizes' for perfect responsiveness */}
-                  <div className="relative aspect-video w-full bg-gray-900 overflow-hidden">
-                    <Image
-                      src={product.thumbnail}
-                      alt={product.title}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
+          {/* Badges */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1.5">
+             {discount > 0 && (
+              <Badge className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-[10px] px-2 shadow-lg backdrop-blur-md border-0">
+                -{discount}% OFF
+              </Badge>
+            )}
+            {/* If Variant Selected, show Validity Badge */}
+            {hasVariants && (
+               <Badge variant="outline" className="bg-black/50 text-white border-white/20 text-[10px] backdrop-blur-md">
+                 <Check className="w-3 h-3 mr-1 text-green-400" /> 
+                 {currentVariant?.validity} Access
+               </Badge>
+            )}
+          </div>
 
-                    {/* Gradient Overlay for text readability if needed */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                    {/* Discount Badge */}
-                    {discount > 0 && (
-                      <span className="absolute top-2 left-2 bg-yellow-500 text-black text-[10px] md:text-xs font-bold px-2 py-0.5 rounded shadow-sm">
-                        -{discount}%
-                      </span>
-                    )}
-
-                    {/* Hot/Running Badge */}
-                    {product.isFeatured && (
-                      <span className="absolute top-2 right-2 bg-green-600 text-white text-[10px] md:text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
-                        HOT
-                      </span>
-                    )}
-                  </div>
-
-                  {/* === CONTENT AREA === */}
-                  <div className="flex flex-1 flex-col p-3 md:p-5">
-                    
-                    {/* Title */}
-                    <h3
-                      className="text-sm md:text-base font-bold text-gray-100 line-clamp-2 leading-snug mb-2 group-hover:text-green-400 transition-colors min-h-[2.5rem]"
-                      title={product.title}
-                    >
-                      {product.title}
-                    </h3>
-
-                    {/* Rating / Meta (Optional placeholder) */}
-                    <div className="flex items-center gap-1 mb-3">
-                        <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                        <span className="text-xs text-gray-500 font-medium">4.8 (120)</span>
-                    </div>
-
-                    {/* Price + Action Row */}
-                    <div className="mt-auto pt-3 border-t border-gray-800 flex items-center justify-between">
-                      <div className="flex flex-col">
-                        {regular > sale && (
-                          <span className="text-[10px] md:text-xs text-gray-500 line-through font-medium">
-                            {formatPrice(regular)}
-                          </span>
-                        )}
-                        <span className="text-sm md:text-lg font-extrabold text-white tracking-tight">
-                          {formatPrice(sale)}
-                        </span>
-                      </div>
-
-                      {/* Cart Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleAddToCart(e, product)}
-                        className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/10 flex items-center justify-center text-gray-300 hover:bg-white hover:text-black transition-all active:scale-90"
-                        aria-label="Add to Cart"
-                      >
-                        <ShoppingCart className="w-4 h-4 md:w-5 md:h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </Link>
-              </div>
-            );
-          })}
+          {product.isFeatured && (
+            <div className="absolute top-2 right-2">
+               <span className="flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg animate-pulse">
+                 <Zap className="w-3 h-3 fill-white" /> HOT
+               </span>
+            </div>
+          )}
         </div>
 
-        {/* Mobile View All Button */}
-        <div className="mt-8 flex justify-center md:hidden">
+        {/* === CONTENT AREA === */}
+        <div className="flex flex-1 flex-col p-4 space-y-3">
+          
+          {/* Title */}
+          <h3
+            className="text-sm md:text-[15px] font-semibold text-gray-100 line-clamp-2 leading-relaxed group-hover:text-blue-400 transition-colors min-h-[2.5rem]"
+            title={product.title}
+          >
+            {product.title}
+          </h3>
+
+          {/* ⚡ Variant Selector (Click blocker to prevent navigation) */}
+          {hasVariants && (
+            <div 
+              className="mt-1" 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            >
+              <Select 
+                value={String(selectedVariantIdx)} 
+                onValueChange={(v) => setSelectedVariantIdx(Number(v))}
+              >
+                <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-gray-300 focus:ring-0 focus:ring-offset-0">
+                  <SelectValue placeholder="Select Plan" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1a1a1d] border-white/10 text-gray-300">
+                  {product.variants!.map((v, idx) => (
+                    <SelectItem key={idx} value={String(idx)} className="text-xs focus:bg-white/10 focus:text-white">
+                      {v.name} - {v.validity}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Rating (Static/Dynamic placeholder) */}
+          {!hasVariants && (
+             <div className="flex items-center gap-1.5">
+               <div className="flex text-yellow-500">
+                 <Star className="w-3 h-3 fill-current" />
+               </div>
+               <span className="text-xs text-gray-500 font-medium pt-0.5">4.9 (120 Reviews)</span>
+             </div>
+          )}
+
+          {/* Price + Action Row */}
+          <div className="mt-auto pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+            
+            <div className="flex flex-col">
+              {regularPrice > displayPrice && (
+                <span className="text-[10px] text-gray-500 line-through font-medium">
+                  {formatPrice(regularPrice)}
+                </span>
+              )}
+              <span className="text-base md:text-lg font-bold text-white tracking-tight flex items-center gap-1">
+                {formatPrice(displayPrice)}
+                {/* Small indicator if price is for a specific variant */}
+                {hasVariants && <span className="text-[10px] font-normal text-gray-400 relative top-[1px]">/ {currentVariant?.name}</span>}
+              </span>
+            </div>
+
+            {/* Cart Button */}
+            <Button
+              size="icon"
+              className="h-9 w-9 rounded-full bg-white text-black hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-lg shadow-white/5"
+              onClick={handleAddToCart}
+            >
+              <ShoppingCart className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+};
+
+// ----------------------------------------------------------------------
+// 2. MAIN COMPONENT: Grid Wrapper
+// ----------------------------------------------------------------------
+const ProductList = ({ products }: { products: IProduct[] }) => {
+  return (
+    <section className="bg-black py-8 md:py-20 text-white min-h-[50vh]">
+      <div className="container mx-auto px-4 md:px-6">
+        
+        {/* Header (Optional) */}
+        <div className="flex items-end justify-between mb-8">
+           <div>
+             <h2 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500">
+               Featured Courses
+             </h2>
+             <p className="text-gray-400 text-sm mt-1">Unlock premium skills instantly</p>
+           </div>
+           <Link href="/shop" className="hidden md:flex text-sm text-blue-400 hover:text-blue-300 items-center gap-1 transition-colors">
+              View All <ArrowRight className="w-4 h-4" />
+           </Link>
+        </div>
+
+        {/* Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
+          {products.map((product) => (
+            <ProductCard key={product._id} product={product} />
+          ))}
+        </div>
+
+        {/* Mobile View All */}
+        <div className="mt-10 flex justify-center md:hidden">
           <Link href="/shop" className="w-full">
             <Button
               variant="outline"
-              className="w-full border-gray-800 text-gray-300 hover:bg-gray-800 hover:text-white bg-transparent h-12 text-sm font-medium rounded-lg"
+              className="w-full border-white/10 text-gray-300 hover:bg-white/5 bg-transparent h-12 text-sm font-medium rounded-xl"
             >
               Browse All Courses <ArrowRight className="w-4 h-4 ml-2" />
             </Button>

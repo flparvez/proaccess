@@ -95,7 +95,7 @@ export default function Navbar() {
               <div className="flex flex-col h-full">
                 {/* Mobile Header */}
                 <div className="p-4 border-b border-gray-800 flex items-center gap-2">
-                  <span className="text-lg font-bold">Edu Access Bd </span>
+                  <span className="text-lg font-bold">Edu  </span>
                   <span className="text-lg font-bold text-gray-400">
                     Access BD
                   </span>
@@ -183,7 +183,7 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5 shrink-0 group">
             <span className="text-lg md:text-xl font-bold text-white tracking-tight leading-none">
-              Edu Access Bd
+              Edu 
             </span>
             <span className="text-lg md:text-xl font-bold text-gray-400 tracking-tight leading-none">
               Access BD

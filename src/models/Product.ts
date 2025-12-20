@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+// ✅ 1. Define Variant Interface (Sub-document)
+export interface IVariant {
+  name: string;      // e.g. "Silver", "Gold", "Platinum"
+  validity: string;  // e.g. "30 Days", "1 Year", "Lifetime"
+  price: number;     // e.g. 500 (Price specific to this variant)
+}
+
 export interface IProduct extends Document {
   _id: mongoose.Types.ObjectId;
   title: string;
@@ -18,10 +25,23 @@ export interface IProduct extends Document {
   fileType: string;
   salesCount: number;
   
-  // 🔒 SECURE FIELDS (New)
-  accessLink?: string; // The private URL (Drive, Telegram, etc.)
-  accessNote?: string; // e.g. "Join with this password: 123"
+  // ⚡ NEW: Variants Field (Optional)
+  variants?: IVariant[];
+
+  // 🔒 SECURE FIELDS
+  accessLink?: string; 
+  accessNote?: string; 
 }
+
+// ✅ 2. Define Variant Schema
+const variantSchema = new Schema<IVariant>(
+  {
+    name: { type: String, required: true },     // Silver/Gold
+    validity: { type: String, required: true }, // 30 Days/Lifetime
+    price: { type: Number, required: true },    // Variant Price
+  },
+  { _id: false } // No need for separate IDs for sub-variants usually
+);
 
 const productSchema = new Schema<IProduct>(
   {
@@ -47,15 +67,20 @@ const productSchema = new Schema<IProduct>(
     
     salesCount: { type: Number, default: 0 },
 
-    // 🔒 SECURE CONTENT CONFIGURATION
-    // select: false ensures this NEVER goes to the public frontend API
+    // ⚡ NEW: Variants Array (Stores Silver/Gold + Validity options)
+    variants: { 
+      type: [variantSchema], 
+      default: [] 
+    },
+
+    // 🔒 SECURE CONTENT
     accessLink: { 
       type: String, 
-      select: false // <--- HIDDEN FROM PUBLIC
+      select: false 
     },
     accessNote: { 
       type: String, 
-      select: false // <--- HIDDEN FROM PUBLIC
+      select: false 
     }
   },
   { timestamps: true }
