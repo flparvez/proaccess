@@ -2,12 +2,26 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { MobileSidebar } from "@/components/admin/MobileSidebar"; 
 import { UserNav } from "@/components/admin/UserNav"; 
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { authOptions } from "@/lib/auth";
+import { getServerSession } from "next-auth";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+    const session = await getServerSession(authOptions);
+
+    const admin = session?.user?.role === "ADMIN";
+    
+    if (!admin) {
+      return (
+        <div className="flex min-h-screen w-full items-center justify-center">
+          <h1 className="text-2xl font-semibold">You Have To Be An Admin To Access This Page</h1>
+        </div>
+      );
+    }
+  
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       {/* Desktop Sidebar (Hidden on Mobile) */}
